@@ -223,7 +223,7 @@ DeletePiece		PROC	NEAR
 				;cell location is:
 				;cell_x = orig_x + id%4
 				;cell_y = orig_y + id/4
-LOOPX:			
+LOPX:			
 				MOV DL, [DI]					;copy the byte of color of current cell into DL
 				CMP DL, 0D						;check if color of current piece block is black
 				JZ 	ISBLACK
@@ -250,7 +250,7 @@ LOOPX:
 ISBLACK:		
 				INC DI
 				CMP CX, 16D
-				JNZ LOOPX
+				JNZ LOPX
 				
 				RET
 DeletePiece		ENDP
