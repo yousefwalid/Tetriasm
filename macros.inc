@@ -1,0 +1,21 @@
+pusha MACRO
+   push ax
+   push cx
+   push dx
+   push bx
+   push sp
+   push bp
+   push si
+   push di
+ENDM pusha
+
+popa MACRO
+   pop di
+   pop si
+   pop bp
+   pop sp
+   pop bx
+   pop dx
+   pop cx
+   pop ax
+ENDM popa
