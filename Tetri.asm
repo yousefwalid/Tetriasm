@@ -66,14 +66,17 @@ MAIN    PROC    FAR
 		MOV SI, 0
 		CALL GetTempPiece
 
-		MOV BX, 6
+		MOV BX, 0
 		CALL SetScrPieceData
 
 		MOV SI, 0
 		CALL DrawPiece
-
+		
+		MOV SI,0
+		CALL RotatePiece
+	
 		MOV SI, 0
-		CALL DeletePiece
+		CALL DrawPiece
 		
 		
 		
@@ -359,43 +362,43 @@ MovePiece		ENDP
 ;@return		none
 RotatePiece		PROC NEAR
 				PUSHA
+				CALL DeletePiece
 				CALL GetTempPiece
 				MOV SI,tempPieceOffset		;Loads the address of the current piece
 				LEA DI,firstPiece
 				
-				MOV AX,[SI]					;Checks ID of the current piece and stores the offset of the original piece's Data in DI
-				CMP AX,0
+				MOV AL,[SI]					;Checks ID of the current piece and stores the offset of the original piece's Data in DI
+				CMP AL,0
 				JZ	ROTATE
 				ADD DI,10H
-				CMP AX,1
+				CMP AL,1
 				JZ ROTATE
 				ADD DI,10H
-				CMP AX,2
+				CMP AL,2
 				JZ ROTATE
 				ADD DI,10H
-				CMP AX,3
+				CMP AL,3
 				JZ ROTATE
 				ADD DI,10H
-				CMP AX,4
+				CMP AL,4
 				JZ ROTATE
 				ADD DI,10H
-				CMP AX,5
+				CMP AL,5
 				JZ ROTATE
 				ADD DI,10H					
 				
 ROTATE:										;Checks the current piece orientation to determine which loop to execute and updates the piece orientation
-				INC SI						
+				INC SI	
 				MOV AX,[SI]
-				ADD SI,3H
-				CMP AX,0
+				CMP AL,0
 				MOV BX,90
 				MOV [SI],BX
 				JZ ROTATE90
-				CMP AX,90
+				CMP AL,90
 				MOV BX,180
 				MOV [SI],BX
 				JZ ROTATE180
-				CMP AX,180
+				CMP AL,180
 				MOV BX,270
 				MOV [SI],BX
 				JZ ROTATE270
@@ -405,6 +408,7 @@ ROTATE:										;Checks the current piece orientation to determine which loop t
 				JZ ROTATE360
 				
 ROTATE90:								;Rotates piece from 0 to 90
+				ADD SI,3H				
 				MOV AX,0CH
 OUTER90:		MOV CX,4
 				MOV BX,DI
@@ -420,6 +424,7 @@ INNER90:		MOV DX,[BX]
 				JMP OUTER90
 				
 ROTATE180:								;Rotates piece from 90 to 180
+				ADD SI,3H				
 				MOV BX,DI
 				ADD BX,0FH
 OUTER180:		MOV DX,[BX]
@@ -431,6 +436,7 @@ OUTER180:		MOV DX,[BX]
 				JMP OUTER180
 						
 ROTATE270:								;Rotates piece from 180 to 270
+				ADD SI,3H
 				MOV AX,3H
 OUTER270:		MOV CX,4
 				MOV BX,DI
@@ -446,6 +452,7 @@ INNER270:		MOV DX,[BX]
 				JMP OUTER270
 				
 ROTATE360:								;Rotates piece from 270 to 0
+				ADD SI,3H				
 				MOV CX,16
 				MOV BX,DI
 OUTER360:		MOV DX,[BX]
