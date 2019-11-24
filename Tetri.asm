@@ -22,10 +22,10 @@ leftLeftCode			DB	1Eh		;A key
 leftRightCode			DB	20h		;D key
 leftRotCode				DB	11h		;W key
 		;Controls for right screen
-rightDownCode			DB	80D		;downArrow key
-rightLeftCode			DB	75D		;leftArrow key
-rightRightCode			DB	77D		;rightArrow key
-rightRotCode			DB	72D		;upArrow key
+rightDownCode			DB	50h		;downArrow key
+rightLeftCode			DB	4Bh 	;leftArrow key
+rightRightCode			DB	4Dh		;rightArrow key
+rightRotCode			DB	48h 	;upArrow key
 
 		;CURRENT PIECE INFO
 leftPieceId					DB	?			;contains the ID of the current piece
@@ -63,13 +63,13 @@ MAIN    PROC    FAR
 
 		CALL DrawGameScr
 
-		MOV SI, 0
+		MOV SI, 4
 		CALL GetTempPiece
 
 		MOV BX, 4
 		CALL SetScrPieceData
 
-		MOV SI, 0
+		MOV SI, 4
 		CALL DrawPiece
 		
 GAMELP:	
@@ -345,7 +345,6 @@ MovePiece		PROC	NEAR
 				;PUT TEMP PIECE IN MEMORY
 				CALL GetTempPiece
 				;DELETE THE PIECE FROM THE SCREEN
-				MOV SI, 0
 				CALL DeletePiece
 				;INSERT MOVING LOGIC HERE
 				POP BX
