@@ -201,6 +201,34 @@ LOOPY:
 			RET
 DrawBlockClr	ENDP
 ;---------------------------
+;This procedure sets the piece data for left or right screen according to tempPieceOffset
+;@param			BX: Piece ID			
+;@return		none
+SetScrPieceData	PROC	NEAR
+				MOV DI,	tempPieceOffset
+				MOV SI, 0d			;initialize counter	
+				MOV [DI], BX		;move id of selected piece to selectedScreenPiece
+				MOV AX, 0
+				MOV [DI+1], AX		;set orientation to 0
+				MOV [DI+3], AX		;set pieceY to 0
+				MOV AX, 5			;set pieceX to 5
+				MOV [DI+2], AX
+				
+				ADD DI, 4d			;jump to piece data
+				MOV AX, BX
+				MOV BX, 16d
+				MUL BX
+				MOV BX, AX
+SETSCRPIECELOP:	
+				MOV CX, firstPiece[BX][SI]
+				MOV [DI], CX
+				INC DI
+				INC SI
+				CMP SI, 16d
+				JNZ SETSCRPIECELOP
+				RET
+SetScrPieceData	ENDP
+;---------------------------
 ;This procedure copies the piece address into tempPiece according to SI
 ;@param			SI: screenId: 0 for left, 4 for right
 ;@return		none 
