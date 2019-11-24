@@ -43,13 +43,13 @@ rightPieceData				DB	16 DUP(?)	;contains the 4x4 matrix of the piece (after orie
 tempPieceOffset				DW	?			;contains the address of the current piece
 
 		;PIECES DATA
-firstPiece 					DB 1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0	;Line shape
+firstPiece 					DB 11,11,11,11,0,0,0,0,0,0,0,0,0,0,0,0	;Line shape
 secondPiece					DB 1,1,1,0,0,0,1,0,0,0,0,0,0,0,0,0	;J shape
-thirdPiece 					DB 1,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0	;L shape 
-fourthPiece 				DB 0,1,1,0,0,1,1,0,0,0,0,0,0,0,0,0	;square
-fifthPiece					DB 0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0	;S shape
-sixthPiece					DB 1,1,1,0,0,1,0,0,0,0,0,0,0,0,0,0	;T shape
-seventhPiece 				DB 1,1,0,0,0,0,1,1,0,0,0,0,0,0,0,0	;Z shape
+thirdPiece 					DB 6,6,6,0,6,0,0,0,0,0,0,0,0,0,0,0	;L shape 
+fourthPiece 				DB 0,14,14,0,0,14,14,0,0,0,0,0,0,0,0,0	;square
+fifthPiece					DB 0,0,2,2,0,2,2,0,0,0,0,0,0,0,0,0	;S shape
+sixthPiece					DB 5,5,5,0,0,5,0,0,0,0,0,0,0,0,0,0	;T shape
+seventhPiece 				DB 4,4,0,0,0,4,4,0,0,0,0,0,0,0,0,0	;Z shape
         .CODE
 ;---------------------------        
 MAIN    PROC    FAR
@@ -66,7 +66,7 @@ MAIN    PROC    FAR
 		MOV SI, 0
 		CALL GetTempPiece
 
-		MOV BX, 1
+		MOV BX, 6
 		CALL SetScrPieceData
 		
 		MOV SI, 0
