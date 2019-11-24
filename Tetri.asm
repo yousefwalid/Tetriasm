@@ -407,23 +407,17 @@ ROTATE:										;Checks the current piece orientation to determine which loop t
 				INC SI	
 				MOV AX,[SI]
 				CMP AL,0
-				MOV BX,90
-				MOV [SI],BX
 				JZ ROTATE90
-				CMP AL,90
-				MOV BX,180
-				MOV [SI],BX
+				CMP AL,1
 				JZ ROTATE180
-				CMP AL,180
-				MOV BX,270
-				MOV [SI],BX
+				CMP AL,2
 				JZ ROTATE270
-				CMP AX,270
-				MOV BX,0
-				MOV [SI],BX
+				CMP AL,3
 				JZ ROTATE360
 				
 ROTATE90:								;Rotates piece from 0 to 90
+				MOV BL,1
+				MOV [SI],BL
 				ADD SI,3H				
 				MOV AX,0CH
 OUTER90:		MOV CX,4
@@ -440,6 +434,8 @@ INNER90:		MOV DX,[BX]
 				JMP OUTER90
 				
 ROTATE180:								;Rotates piece from 90 to 180
+				MOV BL,2
+				MOV [SI],BL
 				ADD SI,3H				
 				MOV BX,DI
 				ADD BX,0FH
@@ -452,6 +448,8 @@ OUTER180:		MOV DX,[BX]
 				JMP OUTER180
 						
 ROTATE270:								;Rotates piece from 180 to 270
+				MOV BL,3
+				MOV [SI],BL
 				ADD SI,3H
 				MOV AX,3H
 OUTER270:		MOV CX,4
@@ -468,6 +466,8 @@ INNER270:		MOV DX,[BX]
 				JMP OUTER270
 				
 ROTATE360:								;Rotates piece from 270 to 0
+				MOV BL,0
+				MOV [SI],BL
 				ADD SI,3H				
 				MOV CX,16
 				MOV BX,DI
