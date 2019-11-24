@@ -68,9 +68,12 @@ MAIN    PROC    FAR
 
 		MOV BX, 6
 		CALL SetScrPieceData
-		
+
 		MOV SI, 0
 		CALL DrawPiece
+
+		MOV SI, 0
+		CALL DeletePiece
 		
 		
 		
@@ -268,12 +271,13 @@ LOPX:
 				ADD CL, AH					;CX = orig_x + id%4
 				ADD DL, AL					;DX = orig_y + id/4
 				
-				MOV AL, [DI]
+				MOV AL, 0
 
 				CALL DrawBlockClr
 				
 				POP  CX
 ISBLACK:		
+				INC CX
 				INC DI
 				CMP CX, 16D
 				JNZ LOPX
