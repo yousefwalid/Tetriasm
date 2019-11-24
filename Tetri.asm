@@ -17,15 +17,15 @@ GAMERIGHTSCRY       DW  15      ;top left corner Y of right screen
 		;CONTROL KEYS (scancodes)
 		
 		;Controls for left screen
-leftDown			DB	115D	;S key
-leftLeft			DB	97D		;A key
-leftRight			DB	100D	;D key
-leftRot				DB	119D	;W key
+leftDownCode			DB	1Fh		;S key
+leftLeftCode			DB	1Eh		;A key
+leftRightCode			DB	20h		;D key
+leftRotCode				DB	11h		;W key
 		;Controls for right screen
-rightDown			DB	80D		;downArrow key
-rightLeft			DB	75D		;leftArrow key
-rightRight			DB	77D		;rightArrow key
-rightRot			DB	72D		;upArrow key
+rightDownCode			DB	80D		;downArrow key
+rightLeftCode			DB	75D		;leftArrow key
+rightRightCode			DB	77D		;rightArrow key
+rightRotCode			DB	72D		;upArrow key
 
 		;CURRENT PIECE INFO
 leftPieceId					DB	?			;contains the ID of the current piece
@@ -61,7 +61,7 @@ MAIN    PROC    FAR
         INT 10H         ;ENTER GFX MODE
         
 
-		CALL DrawGameScr
+		;CALL DrawGameScr
 
 		MOV SI, 0
 		CALL GetTempPiece
@@ -71,11 +71,10 @@ MAIN    PROC    FAR
 
 		MOV SI, 0
 		CALL DrawPiece
-
-		MOV SI, 0
-		CALL DeletePiece
 		
-		
+GAMELP:	
+		CALL ParseInput
+		JMP GAMELP
 		
         MOV AH, 4CH     ;SETUP FOR EXIT
         INT 21H         ;RETURN CONTROL TO DOS
@@ -229,6 +228,7 @@ SetScrPieceData	ENDP
 ;@param			SI: screenId: 0 for left, 4 for right
 ;@return		none 
 GetTempPiece	PROC	NEAR
+				PUSH SI
 				CMP SI, 0					;If the screen is left
 				JNZ	RIGHT
 				LEA SI, leftPieceId			;copy the leftPieceOffset to SI
@@ -237,7 +237,7 @@ GetTempPiece	PROC	NEAR
 RIGHT:										;else if the screen is right
 				LEA SI, rightPieceId		;copy the rightPieceOffset to SI
 				MOV tempPieceOffset, SI		;load the rightPieceOffset to tempPieceOffset
-EXT:
+EXT:			POP SI
 				RET
 GetTempPiece	ENDP
 ;---------------------------
@@ -338,19 +338,38 @@ DrawPiece		ENDP
 ;				SI: screenId: 0 for left, 4 for right
 ;@return		none
 MovePiece		PROC	NEAR
-
+				PUSHA
+				PUSH BX
 				;INSERT COLLISION DETECTION HERE
 
 				;PUT TEMP PIECE IN MEMORY
 				CALL GetTempPiece
 				;DELETE THE PIECE FROM THE SCREEN
+				MOV SI, 0
 				CALL DeletePiece
-
 				;INSERT MOVING LOGIC HERE
+				POP BX
+				CMP BX, 0D
+				JZ DOWND
+				CMP BX, 1D
+				JZ LEFTD
+				CMP BX, 2D
+				JZ RIGHTD
+DOWND:			
+				MOV BX, tempPieceOffset
+				INC BYTE PTR [BX+3]
+				JMP MOVPIECEBRK
+LEFTD:
+				MOV BX, tempPieceOffset
+				DEC BYTE PTR [BX+2]
+				JMP MOVPIECEBRK
+RIGHTD:
+				MOV BX, tempPieceOffset
+				INC BYTE PTR [BX+2]
+MOVPIECEBRK:	;DRAW THE NEW PIECE IN NEW LOCATION
 
-				;DRAW THE NEW PIECE IN NEW LOCATION
 				CALL DrawPiece
-				
+				POPA
 				RET
 MovePiece		ENDP
 ;---------------------------
@@ -457,6 +476,108 @@ OUTER360:		MOV DX,[BX]
 BREAK:			POPA
 				RET
 RotatePiece		ENDP	
+;---------------------------
+;This procedure parses input and calls corresponding procedures
+;@param			none
+;@return		none
+ParseInput		PROC	NEAR
+				MOV AH, 1
+				INT 16H
+				JNZ YesInput
+				RET
+YesInput:
+				MOV AH, 0
+				INT 16H
+LeftRotKey:
+				CMP AH, leftRotCode
+				JNZ LeftLeftKey
+
+				MOV SI, 0
+				CALL GetTempPiece
+
+				MOV SI,0
+				CALL RotatePiece
+
+				JMP BreakParseInput
+LeftLeftKey:
+				CMP AH, leftLeftCode
+				JNZ LeftDownKey
+				MOV SI, 0
+				CALL GetTempPiece
+
+				MOV SI, 0
+				MOV BX, 1
+				CALL MovePiece
+
+				JMP BreakParseInput
+LeftDownKey:
+				CMP AH, leftDownCode
+				JNZ LeftRightKey
+				MOV SI, 0
+				CALL GetTempPiece
+
+				MOV SI,0
+				MOV BX,0
+				CALL MovePiece
+
+
+				JMP BreakParseInput
+LeftRightKey:
+				CMP AH, leftRightCode
+				JNZ RightRotKey
+				MOV SI, 0
+				CALL GetTempPiece
+
+				MOV SI,0
+				MOV BX,2
+				CALL MovePiece
+
+				JMP BreakParseInput
+RightRotKey:
+				CMP AH, rightRotCode
+				JNZ RightLeftKey
+				MOV SI, 4
+				CALL GetTempPiece
+
+				MOV SI, 4
+				CALL RotatePiece
+
+				JMP BreakParseInput
+RightLeftKey:
+				CMP AH, rightLeftCode
+				JNZ RightDownKey
+				MOV SI, 4
+				CALL GetTempPiece
+
+				MOV SI, 4
+				MOV BX, 1
+				CALL MovePiece
+
+				JMP BreakParseInput
+RightDownKey:
+				CMP AH, rightDownCode
+				JNZ RightRightKey
+				MOV SI, 4
+				CALL GetTempPiece
+
+				MOV SI, 4
+				MOV BX, 0
+				CALL MovePiece
+
+				JMP BreakParseInput
+RightRightKey:
+				CMP AH, rightRightCode
+				JNZ BreakParseInput
+				MOV SI, 4
+				CALL GetTempPiece
+				
+				MOV SI, 4
+				MOV BX, 2
+				CALL MovePiece
+
+BreakParseInput:
+				RET
+ParseInput		ENDP
 ;---------------------------			
 END     MAIN
 
