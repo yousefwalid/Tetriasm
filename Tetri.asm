@@ -61,7 +61,7 @@ MAIN    PROC    FAR
         INT 10H         ;ENTER GFX MODE
         
 
-		;CALL DrawGameScr
+		CALL DrawGameScr
 
 		MOV SI, 0
 		CALL GetTempPiece
