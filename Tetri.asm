@@ -290,7 +290,7 @@ DeletePiece		ENDP
 ;@param			SI: screenId: 0 for left, 4 for right
 ;@return		none
 DrawPiece		PROC	NEAR
-
+				PUSHA
 				MOV BX, tempPieceOffset
 				MOV DI, BX						;Load the piece 4x4 string address in pieceData
 				ADD DI,	4						;Go to the string data to put in DI
@@ -328,7 +328,7 @@ DRAWPIECEISBLACK:
 				JNZ DRAWPIECELOPX
 
 
-
+				POPA
 				RET
 DrawPiece		ENDP
 ;---------------------------
@@ -422,8 +422,8 @@ ROTATE90:								;Rotates piece from 0 to 90
 OUTER90:		MOV CX,4
 				MOV BX,DI
 				ADD BX,AX 
-INNER90:		MOV DX,[BX]
-				MOV [SI],DX
+INNER90:		MOV DL,[BX]
+				MOV [SI],DL
 				INC SI
 				SUB BX,4
 				LOOP INNER90
@@ -438,8 +438,8 @@ ROTATE180:								;Rotates piece from 90 to 180
 				ADD SI,3H				
 				MOV BX,DI
 				ADD BX,0FH
-OUTER180:		MOV DX,[BX]
-				MOV [SI],DX
+OUTER180:		MOV DL,[BX]
+				MOV [SI],DL
 				INC SI
 				DEC BX
 				CMP BX,DI
@@ -454,8 +454,8 @@ ROTATE270:								;Rotates piece from 180 to 270
 OUTER270:		MOV CX,4
 				MOV BX,DI
 				ADD BX,AX
-INNER270:		MOV DX,[BX]
-				MOV [SI],DX
+INNER270:		MOV DL,[BX]
+				MOV [SI],DL
 				INC SI
 				ADD BX,4
 				LOOP INNER270
@@ -470,8 +470,8 @@ ROTATE360:								;Rotates piece from 270 to 0
 				ADD SI,3H				
 				MOV CX,16
 				MOV BX,DI
-OUTER360:		MOV DX,[BX]
-				MOV [SI],DX
+OUTER360:		MOV DL,[BX]
+				MOV [SI],DL
 				INC SI
 				INC BX
 				LOOP OUTER360		
