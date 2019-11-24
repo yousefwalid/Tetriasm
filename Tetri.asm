@@ -364,8 +364,11 @@ RotatePiece		PROC NEAR
 				LEA DI,firstPiece
 				
 				MOV AX,[SI]					;Checks ID of the current piece and stores the offset of the original piece's Data in DI
-				CMP AX,1
+				CMP AX,0
 				JZ	ROTATE
+				ADD DI,10H
+				CMP AX,1
+				JZ ROTATE
 				ADD DI,10H
 				CMP AX,2
 				JZ ROTATE
@@ -377,9 +380,6 @@ RotatePiece		PROC NEAR
 				JZ ROTATE
 				ADD DI,10H
 				CMP AX,5
-				JZ ROTATE
-				ADD DI,10H
-				CMP AX,6
 				JZ ROTATE
 				ADD DI,10H					
 				
