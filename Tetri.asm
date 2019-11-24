@@ -60,24 +60,17 @@ MAIN    PROC    FAR
         MOV AL, 13H
         INT 10H         ;ENTER GFX MODE
         
-		CALL DrawGameScr
-		
-		MOV CX, 0
-		MOV DX, 15
-		MOV SI, 0
-		MOV AL, 1
-		CALL DrawBlockClr
 
-		MOV CX, 1
-		MOV DX, 15
+		CALL DrawGameScr
+
 		MOV SI, 0
-		MOV AL, 3
-		CALL DrawBlockClr
-		MOV CX, 2
-		MOV DX, 15
+		CALL GetTempPiece
+
+		MOV BX, 1
+		CALL SetScrPieceData
+		
 		MOV SI, 0
-		MOV AL, 2
-		CALL DrawBlockClr
+		CALL DrawPiece
 		
 		
 		
@@ -220,8 +213,8 @@ SetScrPieceData	PROC	NEAR
 				MUL BX
 				MOV BX, AX
 SETSCRPIECELOP:	
-				MOV CX, firstPiece[BX][SI]
-				MOV [DI], CX
+				MOV CL, firstPiece[BX][SI]
+				MOV [DI], CL
 				INC DI
 				INC SI
 				CMP SI, 16d
@@ -319,13 +312,14 @@ DRAWPIECELOPX:
 				ADD CL, AH					;CX = orig_x + id%4
 				ADD DL, AL					;DX = orig_y + id/4
 				
-				MOV AL, DL
+				MOV AL, [DI]
 
 				CALL DrawBlockClr
 				
 				POP  CX
 DRAWPIECEISBLACK:		
 				INC DI
+				INC CX
 				CMP CX, 16D
 				JNZ DRAWPIECELOPX
 
