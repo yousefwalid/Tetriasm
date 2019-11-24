@@ -161,9 +161,9 @@ GetBlockClr	ENDP
 ;			DX: Y coord,
 ;			SI: screen ID: 0 for left, 4 for right
 ;			AL: color for (X,Y) grid
-;@return	
+;@return	none
 DrawBlockClr	PROC	NEAR
-
+			PUSHA
 			MOV DI, AX		;push color to DI
 							;go to top left of block
 			MOV	AX, CX
@@ -197,7 +197,7 @@ LOOPY:
 			CMP CX, DI
 			JNZ LOOPX
 			
-			
+			POPA
 			RET
 DrawBlockClr	ENDP
 ;---------------------------
@@ -205,26 +205,25 @@ DrawBlockClr	ENDP
 ;@param			SI: screenId: 0 for left, 4 for right
 ;@return		none 
 GetTempPiece	PROC	NEAR
-				CMP SI, 0
+				CMP SI, 0					;If the screen is left
 				JNZ	RIGHT
-				LEA SI, leftPieceId
-				MOV tempPieceOffset, SI
+				LEA SI, leftPieceId			;copy the leftPieceOffset to SI
+				MOV tempPieceOffset, SI		;load the leftPieceOffset to tempPieceOffset
 				JMP EXT
-RIGHT:
-				LEA SI, rightPieceId
-				MOV tempPieceOffset, SI
+RIGHT:										;else if the screen is right
+				LEA SI, rightPieceId		;copy the rightPieceOffset to SI
+				MOV tempPieceOffset, SI		;load the rightPieceOffset to tempPieceOffset
 EXT:
 				RET
 GetTempPiece	ENDP
 ;---------------------------
 ;This procedure clears the current piece (used in changing direction or rotation)	;NEEDS TESTING
 ;@param			SI: screenId: 0 for left, 4 for right
-;
 ;@return		none
 DeletePiece		PROC	NEAR
-				CALL GetTempPiece
-				MOV SI, tempPieceOffset
-				MOV DI, SI						;Load the piece 4x4 string address in pieceData
+				PUSHA
+				MOV BX, tempPieceOffset
+				MOV DI, BX						;Load the piece 4x4 string address in pieceData
 				ADD DI,	4						;Go to the string data to put in DI
 				MOV CX, 0D						;iterate over the 16 cells of the piece
 				;if the piece has color !black, draw it with black
@@ -243,25 +242,69 @@ LOPX:
 				DIV CL						;AH = id%4, AL = id/4
 				MOV CX, 0
 				MOV DX, 0
-				MOV CL, [SI+2]				;load selected piece X into CL
-				MOV DL, [SI+3]				;load selected piece Y into DL
+				MOV CL, [BX+2]				;load selected piece X into CL
+				MOV DL, [BX+3]				;load selected piece Y into DL
 				ADD CL, AH					;CX = orig_x + id%4
-				ADD DL, AL					;CX = orig_y + id/4
+				ADD DL, AL					;DX = orig_y + id/4
 				
-				MOV AL, 0D
-				
-				PUSHA
+				MOV AL, [DI]
+
 				CALL DrawBlockClr
-				POPA
 				
 				POP  CX
 ISBLACK:		
 				INC DI
 				CMP CX, 16D
 				JNZ LOPX
-				
+				POPA
 				RET
 DeletePiece		ENDP
+;---------------------------
+;This procedure draws the piece stored in temp piece
+;in it's corresponding Data,(X,Y)
+;@param			SI: screenId: 0 for left, 4 for right
+;@return		none
+DrawPiece		PROC	NEAR
+
+				MOV BX, tempPieceOffset
+				MOV DI, BX						;Load the piece 4x4 string address in pieceData
+				ADD DI,	4						;Go to the string data to put in DI
+				MOV CX, 0D						;iterate over the 16 cells of the piece
+				;if the piece has color !black, draw it with it's color
+				;cell location is:
+				;cell_x = orig_x + id%4
+				;cell_y = orig_y + id/4
+DRAWPIECELOPX:			
+				MOV DL, [DI]					;copy the byte of color of current cell into DL
+				CMP DL, 0D						;check if color of current piece block is black
+				JZ	 DRAWPIECEISBLACK
+				
+				PUSH CX
+				
+				MOV AX, CX
+				MOV CL, 4D
+				DIV CL						;AH = id%4, AL = id/4
+				MOV CX, 0
+				MOV DX, 0
+				MOV CL, [BX+2]				;load selected piece X into CL
+				MOV DL, [BX+3]				;load selected piece Y into DL
+				ADD CL, AH					;CX = orig_x + id%4
+				ADD DL, AL					;DX = orig_y + id/4
+				
+				MOV AL, DL
+
+				CALL DrawBlockClr
+				
+				POP  CX
+DRAWPIECEISBLACK:		
+				INC DI
+				CMP CX, 16D
+				JNZ DRAWPIECELOPX
+
+
+
+				RET
+DrawPiece		ENDP
 ;---------------------------
 ;This procedure takes the direction to move the piece in and re-draws it in the new location	;NOT FINISHED
 ;@param			
@@ -271,9 +314,16 @@ DeletePiece		ENDP
 MovePiece		PROC	NEAR
 
 				;INSERT COLLISION DETECTION HERE
+
+				;PUT TEMP PIECE IN MEMORY
+				CALL GetTempPiece
 				;DELETE THE PIECE FROM THE SCREEN
 				CALL DeletePiece
+
+				;INSERT MOVING LOGIC HERE
+
 				;DRAW THE NEW PIECE IN NEW LOCATION
+				CALL DrawPiece
 				
 				RET
 MovePiece		ENDP
@@ -382,7 +432,6 @@ BREAK:			POPA
 RotatePiece		ENDP	
 ;---------------------------			
 END     MAIN
-
 
 
 
