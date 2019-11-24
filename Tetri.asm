@@ -42,6 +42,14 @@ rightPieceData				DB	16 DUP(?)	;contains the 4x4 matrix of the piece (after orie
 
 tempPieceOffset				DW	?			;contains the address of the current piece
 
+		;PIECES DATA
+firstPiece 					DB 1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0	;bar shape
+secondPiece					DB 1,1,1,0,0,0,1,0,0,0,0,0,0,0,0,0	;Lshape
+thirdPiece 					DB 1,1,1,0,0,1,0,0,0,0,0,0,0,0,0,0	;Lshape inverted
+fourthPiece 				DB 0,1,1,0,0,1,1,0,0,0,0,0,0,0,0,0	;square
+fifthPiece					DB 0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0	;chair shape
+sixthPiece					DB 1,1,1,0,0,1,0,0,0,0,0,0,0,0,0,0	;l- shape
+seventhPiece 				DB 1,1,0,0,0,0,1,1,0,0,0,0,0,0,0,0	;inverted chair shape
         .CODE
 ;---------------------------        
 MAIN    PROC    FAR
@@ -270,6 +278,109 @@ MovePiece		PROC	NEAR
 				RET
 MovePiece		ENDP
 ;---------------------------
+;This procedure rotates the current piece that's pointed to by the tempPieceOffset by 90 degree from the previous rotation
+;@param			none
+;@return		none
+RotatePiece		PROC NEAR
+				PUSHA
+				MOV SI,tempPieceOffset		;Loads the address of the current piece
+				LEA DI,firstPiece
+				
+				MOV AX,[SI]					;Checks ID of the current piece and stores the offset of the original piece's Data in DI
+				CMP AX,1
+				JZ	ROTATE
+				ADD DI,16
+				CMP AX,2
+				JZ ROTATE
+				ADD DI,16
+				CMP AX,3
+				JZ ROTATE
+				ADD DI,16
+				CMP AX,4
+				JZ ROTATE
+				ADD DI,16
+				CMP AX,5
+				JZ ROTATE
+				ADD DI,16
+				CMP AX,6
+				JZ ROTATE
+				ADD DI,16					
+				
+ROTATE:										;Checks the current piece orientation to determine which loop to execute and updates the piece orientation
+				INC SI						
+				MOV AX,[SI]
+				CMP AX,0
+				MOV BX,90
+				MOV [SI],BX
+				JZ ROTATE90
+				CMP AX,90
+				MOV BX,180
+				MOV [SI],BX
+				JZ ROTATE180
+				CMP AX,180
+				MOV BX,270
+				MOV [SI],BX
+				JZ ROTATE270
+				CMP AX,270
+				MOV BX,0
+				MOV [SI],BX
+				JZ ROTATE360
+				ADD SI,3
+				
+ROTATE90:								;Rotates piece from 0 to 90
+				MOV AX,12
+OUTER90:		MOV CX,4
+				MOV BX,DI
+				ADD BX,AX 
+INNER90:		MOV DX,[BX]
+				MOV [SI],DX
+				INC SI
+				SUB BX,4
+				LOOP INNER90
+				INC AX
+				CMP AX,16
+				JZ BREAK
+				JMP OUTER90
+				
+ROTATE180:								;Rotates piece from 90 to 180
+				MOV BX,DI
+				ADD BX,15
+OUTER180:		MOV DX,[BX]
+				MOV [SI],DX
+				INC SI
+				DEC BX
+				CMP BX,DI
+				JS BREAK
+				JMP OUTER180
+						
+ROTATE270:								;Rotates piece from 180 to 270
+				MOV AX,3
+OUTER270:		MOV CX,4
+				MOV BX,DI
+				ADD BX,AX
+INNER270:		MOV DX,[BX]
+				MOV [SI],DX
+				INC SI
+				ADD BX,4
+				LOOP INNER270
+				DEC AX
+				CMP AX,0
+				JS BREAK
+				JMP OUTER270
+				
+ROTATE360:								;Rotates piece from 270 to 0
+				MOV CX,16
+				MOV BX,DI
+OUTER360:		MOV DX,[BX]
+				MOV [SI],DX
+				INC SI
+				INC BX
+				LOOP OUTER360		
+								
+BREAK:			POPA
+				RET
+RotatePiece		ENDP	
+;---------------------------			
 END     MAIN
 
 
