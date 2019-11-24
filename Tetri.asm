@@ -66,7 +66,7 @@ MAIN    PROC    FAR
 		MOV SI, 0
 		CALL GetTempPiece
 
-		MOV BX, 0
+		MOV BX, 4
 		CALL SetScrPieceData
 
 		MOV SI, 0
@@ -477,7 +477,9 @@ OUTER360:		MOV DX,[BX]
 				INC BX
 				LOOP OUTER360		
 								
-BREAK:			POPA
+BREAK:			
+				POPA
+				CALL DrawPiece
 				RET
 RotatePiece		ENDP	
 ;---------------------------
