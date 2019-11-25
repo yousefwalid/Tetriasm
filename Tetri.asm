@@ -44,6 +44,13 @@ rightPieceSpeed				DB	2			;contains the falling speed of the right piece
 
 tempPieceOffset				DW	?			;contains the address of the current piece
 
+collisionPieceId				DB	?			;contains the ID of the current piece
+collisionPieceOrientation		DB	?			;contains the current orientation of the piece
+collisionPieceLocX				DB	?			;the Xcoord of the top left corner
+collisionPieceLocY				DB	?			;the Ycoord of the top left corner
+collisionPieceData				DB	16 DUP(?)	;contains the 4x4 matrix of the piece (after orientation)
+collisionPieceSpeed				DB	1			;contains the falling speed of the left piece
+
 		;PIECES DATA
 firstPiece 					DB 11,11,11,11,0,0,0,0,0,0,0,0,0,0,0,0	;Line shape
 secondPiece					DB 1,1,1,0,0,0,1,0,0,0,0,0,0,0,0,0	;J shape
@@ -68,7 +75,7 @@ MAIN    PROC    FAR
 		CALL DrawGameScr
 
 		MOV SI, 4
-		CALL GetTempPiece
+		CALL GetTempPiece ;copy piece address to temp piece
 
 		MOV BX, 4
 		CALL SetScrPieceData
@@ -78,8 +85,10 @@ MAIN    PROC    FAR
 		
 		MOV SI,0
 		CALL GetTempPiece
+
 		MOV BX,4
 		CALL SetScrPieceData
+
 		MOV SI,0
 		CALL DrawPiece
 		
@@ -354,6 +363,8 @@ MovePiece		PROC	NEAR
 				PUSH BX
 				;INSERT COLLISION DETECTION HERE
 
+				
+				
 				;PUT TEMP PIECE IN MEMORY
 				CALL GetTempPiece
 				;DELETE THE PIECE FROM THE SCREEN
@@ -632,7 +643,48 @@ MOVERIGHT:		CALL MovePiece
 NO_CHANGE:		POPA
 				RET
 PieceGravity	ENDP	
-;---------------------------		
+;---------------------------
+;This procedure sets the collision piece by copying temp piece data to collision data
+;@params	none
+;@return 	none
+setCollisionPiece	PROC	NEAR
+					PUSHA
+
+					MOV SI, tempPieceOffset  		;get the offset of the source data
+					MOV DI, offset collisionPieceId	;offset of the destination data
+
+					
+					MOV CX, 21						;loop 21 bytes to copy all the data
+copyPieceData:		MOV BX, [SI]					;copy the data in byte to BX
+					MOV [DI], BX					;paste the data in the destination byte
+					INC DI							;increment destination offset
+					INC SI							;increment source offset
+					LOOP copyPieceData				;loop
+
+					POPA
+					RET
+setCollisionPiece	ENDP
+
+
+;---------------------------
+
+CheckCollision	PROC	NEAR
+				PUSHA
+		
+				
+				POPA
+				RET
+CheckCollision	ENDP	
+;---------------------------	
+	
+endm		
+
+
+
+
+
+
+
 END     MAIN
 
 
