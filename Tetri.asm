@@ -33,12 +33,14 @@ leftPieceOrientation		DB	?			;contains the current orientation of the piece
 leftPieceLocX				DB	?			;the Xcoord of the top left corner
 leftPieceLocY				DB	?			;the Ycoord of the top left corner
 leftPieceData				DB	16 DUP(?)	;contains the 4x4 matrix of the piece (after orientation)
+leftPieceSpeed				DB	1			;contains the falling speed of the left piece
 
 rightPieceId				DB	?			;contains the ID of the current piece
 rightPieceOrientation		DB	?			;contains the current orientation of the piece
 rightPieceLocX				DB	?			;the Xcoord of the top left corner
 rightPieceLocY				DB	?			;the Ycoord of the top left corner
 rightPieceData				DB	16 DUP(?)	;contains the 4x4 matrix of the piece (after orientation)
+rightPieceSpeed				DB	2			;contains the falling speed of the right piece
 
 tempPieceOffset				DW	?			;contains the address of the current piece
 
@@ -50,6 +52,8 @@ fourthPiece 				DB 0,14,14,0,0,14,14,0,0,0,0,0,0,0,0,0	;square
 fifthPiece					DB 0,0,2,2,0,2,2,0,0,0,0,0,0,0,0,0	;S shape
 sixthPiece					DB 5,5,5,0,0,5,0,0,0,0,0,0,0,0,0,0	;T shape
 seventhPiece 				DB 4,4,0,0,0,4,4,0,0,0,0,0,0,0,0,0	;Z shape
+
+Seconds						DB 99			;Contains the previous second value
         .CODE
 ;---------------------------        
 MAIN    PROC    FAR
@@ -68,12 +72,20 @@ MAIN    PROC    FAR
 
 		MOV BX, 4
 		CALL SetScrPieceData
-
+		
 		MOV SI, 4
+		CALL DrawPiece
+		
+		MOV SI,0
+		CALL GetTempPiece
+		MOV BX,4
+		CALL SetScrPieceData
+		MOV SI,0
 		CALL DrawPiece
 		
 GAMELP:	
 		CALL ParseInput
+		CALL PieceGravity
 		JMP GAMELP
 		
         MOV AH, 4CH     ;SETUP FOR EXIT
@@ -583,7 +595,44 @@ RightRightKey:
 BreakParseInput:
 				RET
 ParseInput		ENDP
-;---------------------------			
+;---------------------------
+;This Procedure is called in the gameloop to move the pieces downward each second
+;@param			none
+;@return		none
+PieceGravity	PROC	NEAR
+				PUSHA
+				mov  AH, 2CH
+				INT  21H 			;RETURN SECONDS IN DH.
+				CMP DH,seconds		;Check if one second has passed
+				JE NO_CHANGE
+				MOV seconds,DH		;moves current second to the seconds variable
+				MOV BX,0			;Parameter to move piece in particular direction
+				MOV SI,0
+				CALL GetTempPiece	;sets the TempPieceOffset with the address of the leftPiece
+				MOV AX,0			;Clearing AX before using it
+				MOV AL,tempPieceOffset ;gets the leftPiece's data offset
+				ADD AX,14H			;Access the speed of the left piece
+				MOV DI,AX			;DI=leftPieceSpeed
+				MOV CX,0			;Clears the CX before looping
+				MOV CL,[DI]			;moves the piece number of steps equal to it's speed
+MOVELEFT:		CALL MovePiece	
+				LOOP MOVELEFT
+				
+				MOV SI,4			
+				CALL GetTempPiece	;sets the TempPieceOffset with the address of the rightPiece
+				MOV AX,0			;Clearing AX before using it
+				MOV AL,tempPieceOffset	;gets the rightPiece's data offset
+				ADD AX,14H			;Access the speed of the right piece
+				MOV DI,AX			;DI=rightPieceSpeed
+				MOV CX,0			;Clears the CX before looping
+				MOV CL,[DI]			;moves the piece number of steps equal to it's speed
+MOVERIGHT:		CALL MovePiece	
+				LOOP MOVERIGHT
+				
+NO_CHANGE:		POPA
+				RET
+PieceGravity	ENDP	
+;---------------------------		
 END     MAIN
 
 
