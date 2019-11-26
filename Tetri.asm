@@ -73,14 +73,12 @@ MAIN    PROC    FAR
 		INT 10H         ;ENTER GFX MODE
 
 
-		CALL DrawGameScr
+		;CALL DrawGameScr
 
 		MOV SI, 4
 		CALL GetTempPiece
-
 		MOV BX, 5
 		CALL SetScrPieceData
-
 		MOV SI, 4
 		CALL DrawPiece
 
@@ -90,18 +88,10 @@ MAIN    PROC    FAR
 		CALL SetScrPieceData
 		MOV SI,0
 		CALL DrawPiece
-		
-		MOV CX,1D
-		MOV DX,1D
-		MOV SI, 4
-		MOV AL, 1
-		CALL DrawBlockClr
 
 GAMELP:	
 		CALL ParseInput
-		CALL setCollisionPiece
-		CALL CheckCollision
-		;CALL PieceGravity
+		CALL PieceGravity
 		JMP GAMELP
 
 		MOV AH, 4CH     ;SETUP FOR EXIT
@@ -265,11 +255,11 @@ GetTempPiece	PROC	NEAR
 RIGHT:										;else if the screen is right
 		LEA SI, rightPieceId		;copy the rightPieceOffset to SI
 		MOV tempPieceOffset, SI		;load the rightPieceOffset to tempPieceOffset
-EXT:			POP SI
+EXT:	POP SI
 		RET
 GetTempPiece	ENDP
 ;---------------------------
-;This procedure clears the current piece (used in changing direction or rotation)	;NEEDS TESTING
+;This procedure clears the current temp piece (used in changing direction or rotation)	;NEEDS TESTING
 ;@param			SI: screenId: 0 for left, 4 for right
 ;@return		none
 DeletePiece		PROC	NEAR
@@ -368,14 +358,44 @@ DrawPiece		ENDP
 MovePiece		PROC	NEAR
 		PUSHA
 		PUSH BX
-		;INSERT COLLISION DETECTION HERE
 
 		;PUT TEMP PIECE IN MEMORY
 		CALL GetTempPiece
+
+		CALL DeletePiece
+
+		;INSERT COLLISION DETECTION HERE
+		CALL setCollisionPiece		;Set the offset of the collision piece from temp piece
+
+		CMP BX, 0D					;check for direction of movement
+		JZ DOWNDTEMP
+		CMP BX, 1D
+		JZ LEFTDTEMP
+		CMP BX, 2D
+		JZ RIGHTDTEMP
+DOWNDTEMP:									;move collision piece downward
+		MOV BX, offset collisionPieceId
+		INC BYTE PTR [BX+3]
+		JMP COLLPIECEBRK
+LEFTDTEMP:									;move collision piece left 
+		MOV BX, offset collisionPieceId
+		DEC BYTE PTR [BX+2]
+		JMP COLLPIECEBRK
+RIGHTDTEMP:									;move collision piece right
+		MOV BX, offset collisionPieceId
+		INC BYTE PTR [BX+2]		
+COLLPIECEBRK:
+		CALL CheckCollision					;check if collisionPiece collides
+											;AH will be 1 if it collides, 0 if not
+		CALL DrawPiece
+		POP BX
+		CMP AH, 1
+		JNZ	BREAKMOVEPIECE					;If the piece collides, break the procedure and leave
+
 		;DELETE THE PIECE FROM THE SCREEN
 		CALL DeletePiece
 		;INSERT MOVING LOGIC HERE
-		POP BX
+	
 		CMP BX, 0D
 		JZ DOWND
 		CMP BX, 1D
@@ -396,6 +416,7 @@ RIGHTD:
 MOVPIECEBRK:	;DRAW THE NEW PIECE IN NEW LOCATION
 
 		CALL DrawPiece
+BREAKMOVEPIECE:
 		POPA
 		RET
 MovePiece		ENDP
@@ -626,7 +647,7 @@ PieceGravity	PROC	NEAR
 		MOV SI,0
 		CALL GetTempPiece	;sets the TempPieceOffset with the address of the leftPiece
 		MOV AX,0			;Clearing AX before using it
-		MOV AL,tempPieceOffset ;gets the leftPiece's data offset
+		MOV AX,tempPieceOffset ;gets the leftPiece's data offset
 		ADD AX,14H			;Access the speed of the left piece
 		MOV DI,AX			;DI=leftPieceSpeed
 		MOV CX,0			;Clears the CX before looping
@@ -637,7 +658,7 @@ MOVELEFT:		CALL MovePiece
 		MOV SI,4			
 		CALL GetTempPiece	;sets the TempPieceOffset with the address of the rightPiece
 		MOV AX,0			;Clearing AX before using it
-		MOV AL,tempPieceOffset	;gets the rightPiece's data offset
+		MOV AX,tempPieceOffset	;gets the rightPiece's data offset
 		ADD AX,14H			;Access the speed of the right piece
 		MOV DI,AX			;DI=rightPieceSpeed
 		MOV CX,0			;Clears the CX before looping
@@ -672,10 +693,10 @@ copyPieceData:		MOV BX, [SI]					;copy the data in byte to BX
 			POPA
 			RET
 setCollisionPiece	ENDP
-
-
 ;---------------------------
-
+;This procedure checks if the piece stored in collisionPiece collides
+;@param			NONE
+;@return		AL: 1 if piece collides, 0 if piece doesn't collide
 CheckCollision	PROC	NEAR
 				PUSHA
 
