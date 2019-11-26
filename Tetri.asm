@@ -60,12 +60,12 @@ secondPiece					DB 1,1,1,0,0,0,1,0,0,0,0,0,0,0,0,0	;J shape
 thirdPiece 					DB 6,6,6,0,6,0,0,0,0,0,0,0,0,0,0,0	;L shape 
 fourthPiece 				DB 0,14,14,0,0,14,14,0,0,0,0,0,0,0,0,0	;square
 fifthPiece					DB 0,0,2,2,0,2,2,0,0,0,0,0,0,0,0,0	;S shape
-sixthPiece					DB 5,5,5,5,5,5,0,0,0,0,0,0,0,0,0,0	;T shape
+sixthPiece					DB 5,5,5,0,0,5,0,0,0,0,0,0,0,0,0,0	;T shape
 seventhPiece 				DB 4,4,0,0,0,4,4,0,0,0,0,0,0,0,0,0	;Z shape
 
 Seconds						DB 99			;Contains the previous second value
 
-FRAMEWIDTH        equ  10     ;width of each screen
+FRAMEWIDTH        equ  10      ;width of each screen
 FRAMEHEIGHT       equ  16     ;height of each screen
 .CODE
 ;---------------------------        
@@ -77,13 +77,8 @@ MAIN    PROC    FAR
 		MOV AL, 13H
 		INT 10H         ;ENTER GFX MODE
 
-
-		;CALL DrawGameScr
-
 		CALL DrawGameScr
-		CALL drawPixelsFrame
-
-
+		
 		MOV SI, 4
 		CALL GetTempPiece
 		MOV BX, 5
@@ -227,6 +222,7 @@ drawPixelsFrame ENDP
 ;			SI: screen ID: 0 for left, 4 for right
 ;@return	AL:	color for (X,Y) grid
 GetBlockClr	PROC	NEAR							;XXXXXXXXX - NEEDS TESTING
+	PUSHA
 	MOV AX, CX		;top left of (X,Y) block is 10*X + gridTopX
 	MOV BL, 10D	
 	MUL BL
@@ -240,10 +236,12 @@ GetBlockClr	PROC	NEAR							;XXXXXXXXX - NEEDS TESTING
 	ADD AX, GAMELEFTSCRY[SI]
 	MOV DX, AX
 	
-	
+	POPA
 	MOV AH, 0DH
+	PUSH BX
 	MOV BH, 0
 	INT 10H
+	POP BX
 	RET
 GetBlockClr	ENDP
 ;---------------------------
@@ -299,11 +297,12 @@ SetScrPieceData	PROC	NEAR
 		MOV DI,	tempPieceOffset
 		MOV SI, 0d			;initialize counter	
 		MOV [DI], BX		;move id of selected piece to selectedScreenPiece
-		MOV AX, 0
-		MOV [DI+1], AX		;set orientation to 0
-		MOV [DI+3], AX		;set pieceY to 0
-		MOV AX, 5			;set pieceX to 5
-		MOV [DI+2], AX
+		MOV AH, 0
+		MOV [DI+1], AH		;set orientation to 0
+		MOV AH, 0D
+		MOV [DI+3], AH		;set pieceY to 0
+		MOV AH, 04D			;set pieceX to 4
+		MOV [DI+2], AH
 		
 		ADD DI, 4d			;jump to piece data
 		MOV AX, BX
@@ -465,13 +464,13 @@ RIGHTDTEMP:									;move collision piece right
 COLLPIECEBRK:
 		CALL CheckCollision					;check if collisionPiece collides
 											;AH will be 1 if it collides, 0 if not
-		CALL DrawPiece
+		;CALL DrawPiece
 		POP BX
-		CMP AH, 1
-		JNZ	BREAKMOVEPIECE					;If the piece collides, break the procedure and leave
+		CMP AL, 1
+		JZ	BREAKMOVEPIECE					;If the piece collides, break the procedure and leave
 
 		;DELETE THE PIECE FROM THE SCREEN
-		CALL DeletePiece
+		;CALL DeletePiece
 		;INSERT MOVING LOGIC HERE
 	
 		CMP BX, 0D
@@ -493,8 +492,8 @@ RIGHTD:
 		INC BYTE PTR [BX+2]
 MOVPIECEBRK:	;DRAW THE NEW PIECE IN NEW LOCATION
 
-		CALL DrawPiece
 BREAKMOVEPIECE:
+		CALL DrawPiece
 		POPA
 		RET
 MovePiece		ENDP
@@ -772,38 +771,10 @@ copyPieceData:		MOV BX, [SI]					;copy the data in byte to BX
 			RET
 setCollisionPiece	ENDP
 ;---------------------------
-;Procedure to check the collision with both the frame and blocks
-;@params: NONE
-;@return: AL: 1 collision, 0 no collision
-CheckCollision	PROC	NEAR
-				PUSHA
-
-				CALL CheckCollisionWithFrame
-				CMP AL, 1
-				JE CollisionHappens
-
-				CALL CheckCollisionWithBlocks
-				CMP AL,1
-				JE CollisionHappens
-
-				MOV AL,0
-				
-				POPA
-				RET
-CollisionHappens: 
-				MOV AL,1
-				POPA
-				RET
-
-CheckCollision	ENDP
-;---------------------------
-
-;---------------------------
 ;Procedure to check the collision of the collisionPiece with the blocks
 ;@params: NONE
 ;@return: AL: 1 collision, 0 no collision
-CheckCollisionWithBlocks	
-				PROC	NEAR
+CheckCollisionWithBlocks	PROC	NEAR
 				PUSHA
 
 				MOV BX, offset collisionPieceId
@@ -847,21 +818,18 @@ CheckCollisionWithBlocks
 				CMP CX, 16D
 				JNZ loopOverPieceData
 				
-
-				MOV AL,0D
 				POPA
+				MOV AL,0D
 				RET
 
 				collisionWithBlockHappens:
 
-
-				MOV AL,1D
 				POPA
+				MOV AL,1D
 				RET
 
 CheckCollisionWithBlocks	ENDP
 ;---------------------------
-
 CheckCollisionWithFrame	PROC	NEAR
 						PUSHA
 
@@ -902,18 +870,34 @@ blockEmpty:
 		CMP CX, 16D
 		JNZ CheckCollisionWithFrameLoop
 
-		MOV AL,0
 		POPA
+		MOV AL,0
 		RET
 
 outOfScreen:
-			MOV AL,1
 			POP  CX
 			POPA
+			MOV AL,1
 			RET
-
-
 CheckCollisionWithFrame	ENDP
 ;---------------------------
+;Procedure to check the collision with both the frame and blocks
+;@params: NONE
+;@return: AL: 1 collision, 0 no collision
+CheckCollision	PROC	NEAR
+				CALL CheckCollisionWithFrame
+				CMP AL, 1
+				JE CollisionHappens
 
+				CALL CheckCollisionWithBlocks
+				CMP AL,1
+				JE CollisionHappens
+
+				MOV AL,0
+				RET
+CollisionHappens: 
+				MOV AL,1
+				RET
+CheckCollision	ENDP
+;---------------------------
 END     MAIN
