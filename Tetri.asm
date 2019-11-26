@@ -8,6 +8,8 @@ INCLUDE macros.inc
 ;INSERT DATA HERE
 GAMESCRWIDTH        DW  100     ;width of each screen
 GAMESCRHEIGHT       DW  160     ;height of each screen
+
+
 						;Tetris grid is 16x10, so each block is 10x10 pixels
 GAMELEFTSCRX        DW  10      ;top left corner X of left screen
 GAMELEFTSCRY        DW  15      ;top left corner Y of left screen
@@ -62,6 +64,9 @@ sixthPiece					DB 5,5,5,5,5,5,0,0,0,0,0,0,0,0,0,0	;T shape
 seventhPiece 				DB 4,4,0,0,0,4,4,0,0,0,0,0,0,0,0,0	;Z shape
 
 Seconds						DB 99			;Contains the previous second value
+
+FRAMEWIDTH        equ  10     ;width of each screen
+FRAMEHEIGHT       equ  16     ;height of each screen
 .CODE
 ;---------------------------        
 MAIN    PROC    FAR
@@ -745,20 +750,50 @@ setCollisionPiece	ENDP
 
 
 ;---------------------------
-
+;Procedure to check the collision with both the frame and blocks
+;@params: NONE
+;@return: AL: 1 collision, 0 no collision
 CheckCollision	PROC	NEAR
+				PUSHA
+
+				CALL CheckCollisionWithFrame
+				CMP AL, 1
+				JE CollisionHappens
+
+				CALL CheckCollisionWithBlocks
+				CMP AL,1
+				JE CollisionHappens
+
+				MOV AL,0
+				
+				POPA
+				RET
+CollisionHappens: 
+				MOV AL,1
+				POPA
+				RET
+
+CheckCollision	ENDP
+;---------------------------
+
+;---------------------------
+;Procedure to check the collision of the collisionPiece with the blocks
+;@params: NONE
+;@return: AL: 1 collision, 0 no collision
+CheckCollisionWithBlocks	
+				PROC	NEAR
 				PUSHA
 
 				MOV BX, offset collisionPieceId
 				MOV DI, BX						;Load the piece 4x4 string address in pieceData
 				ADD DI,	4						;Go to the string data to put in DI
-				MOV CX, 16D						;iterate over the 16 cells of the piece
+				MOV CX, 0						;iterate over the 16 cells of the piece
 				;if the piece has color !black, draw it with it's color
 				;cell location is:
 				;cell_x = orig_x + id%4
 				;cell_y = orig_y + id/4
 
-				loopOverPieceData:			
+		loopOverPieceData:			
 				MOV DL, [DI]					;copy the byte of color of current cell into DL
 				CMP DL, 0D						;check if color of current piece block is black
 				JZ	 checkNextByte
@@ -779,23 +814,84 @@ CheckCollision	PROC	NEAR
 				CALL GetBlockClr
 
 				CMP AL, 0D
-				JNZ collisionHappens 
-
 				POP  CX
-				checkNextByte:		
+				JNZ collisionWithBlockHappens 
+
+				
+			
+			checkNextByte:
+				INC CX		
 				INC DI
-				LOOP loopOverPieceData
+				CMP CX, 16D
+				JNZ loopOverPieceData
+				
 
 				MOV AL,0D
 				POPA
 				RET
 
-				collisionHappens:
+				collisionWithBlockHappens:
+
+
 				MOV AL,1D
 				POPA
 				RET
 
-CheckCollision	ENDP
-;---------------------------	
+CheckCollisionWithBlocks	ENDP
+;---------------------------
+
+CheckCollisionWithFrame	PROC	NEAR
+						PUSHA
+
+		MOV BX, offset collisionPieceId
+		MOV DI, BX						;Load the piece 4x4 string address in pieceData
+		ADD DI,	4						;Go to the string data to put in DI
+		MOV CX, 0D						;iterate over the 16 cells of the piece
+		;if the piece has color !black, draw it with black
+		;cell location is:
+		;cell_x = orig_x + id%4
+		;cell_y = orig_y + id/4
+CheckCollisionWithFrameLoop:			
+		MOV DL, [DI]					;copy the byte of color of current cell into DL
+		CMP DL, 0D						;check if color of current piece block is black
+		JZ 	blockEmpty
+		
+		PUSH CX
+		
+		MOV AX, CX
+		MOV CL, 4D
+		DIV CL						;AH = id%4, AL = id/4
+		MOV CX, 0
+		MOV DX, 0
+		MOV CL, [BX+2]				;load selected piece X into CL
+		MOV DL, [BX+3]				;load selected piece Y into DL
+		ADD CL, AH					;CX = orig_x + id%4
+		ADD DL, AL					;DX = orig_y + id/4
+		
+		CMP CX, FRAMEWIDTH
+		JAE outOfScreen
+		CMP DX, FRAMEHEIGHT
+		JAE outOfScreen 
+		 
+		POP  CX
+blockEmpty:		
+		INC CX
+		INC DI
+		CMP CX, 16D
+		JNZ CheckCollisionWithFrameLoop
+
+		MOV AL,0
+		POPA
+		RET
+
+outOfScreen:
+			MOV AL,1
+			POP  CX
+			POPA
+			RET
+
+
+CheckCollisionWithFrame	ENDP
+;---------------------------
 
 END     MAIN
