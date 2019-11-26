@@ -74,6 +74,7 @@ MAIN    PROC    FAR
 
 
 		CALL DrawGameScr
+		CALL drawPixelsFrame
 
 		MOV SI, 4
 		CALL GetTempPiece
@@ -122,8 +123,11 @@ DRAWFRAME:
 	;INC DX						;draw at bottom + 1 as this is the border
 	MOV BX, GAMELEFTSCRX[SI]
 	ADD BX, GAMESCRWIDTH    ;set right limit
+
 DRAWHOR:
 	INT 10H                 ;draw bottom
+
+
 	INC CX                  ;inc X
 	CMP CX, BX              ;check if column is at limit
 	JBE DRAWHOR             ;if yes, exit loop
@@ -135,13 +139,19 @@ DRAWHOR:
 	MOV BX, GAMELEFTSCRY+[SI]
 	ADD BX, GAMESCRHEIGHT   	 ;set bottom limit
 	
-DRAWVER:    
+DRAWVER:
+	
 	INT 10H                 ;draw left
+
+
 	ADD CX, GAMESCRWIDTH    ;go to right
 	ADD CX, 1				;draw at right + 1
-	INT 10H                 ;draw right
+	INT 10H               ;draw right
 	SUB CX, GAMESCRWIDTH    ;go back to left	
 	SUB CX, 1
+
+	
+
 	INC DX                  ;inc Y
 	CMP DX, BX              ;check if row is at limit
 	JBE DRAWVER
@@ -153,6 +163,66 @@ DRAWVER:
 	RET
 DrawGameScr ENDP
 ;---------------------------
+
+;---------------------------
+;This PROC draws the pixels surrounding the frame of the two players given the parameters in data segment
+;@param     none
+;@return    none
+drawPixelsFrame PROC    NEAR
+	MOV SI, 0				;0 for left, 4 for right
+	MOV AL, 8               ;frame color
+	MOV AH, 0CH             ;draw pixel command
+
+drawPixelsFrameLoop:
+	MOV CX, GAMELEFTSCRX[SI]    ;beginning of top left X
+	MOV DX, GAMELEFTSCRY[SI]   	;beginning of top left Y
+	ADD DX, GAMESCRHEIGHT	  	;go to bottom
+	;INC DX						;draw at bottom + 1 as this is the border
+	MOV BX, GAMELEFTSCRX[SI]
+	ADD BX, GAMESCRWIDTH    ;set right limit
+	
+	ADD CX,5D
+	ADD DX,5D
+
+DRAWPIXELHOR:
+	INT 10H                 ;draw bottom
+	ADD CX,10D               ;inc X
+	CMP CX, BX              ;check if column is at limit
+	JBE DRAWPIXELHOR             ;if yes, exit loop
+	
+
+	MOV CX, GAMELEFTSCRX+[SI]    ;beginning of top left X
+	DEC CX						 ;go to left - 1
+	MOV DX, GAMELEFTSCRY+[SI]    ;beginning of top left Y
+	
+	MOV BX, GAMELEFTSCRY+[SI]
+	ADD BX, GAMESCRHEIGHT   	 ;set bottom limit
+	
+	SUB CX, 5D
+	ADD DX, 5D
+
+DRAWPIXELVER:
+	INT 10H                 ;draw left
+
+	ADD CX, GAMESCRWIDTH    ;go to right
+	ADD CX, 10D				;draw at right + 1
+	INT 10H               ;draw right
+	SUB CX, GAMESCRWIDTH    ;go back to left	
+	SUB CX, 10D
+
+	
+
+	ADD DX,10D                  ;inc Y
+	CMP DX, BX              ;check if row is at limit
+	JBE DRAWPIXELVER
+
+	ADD SI, 4				;inc SI
+	CMP SI, 8				;check if loop ran twice
+	JNE	drawPixelsFrameLoop
+
+	RET
+drawPixelsFrame ENDP
+;---------------------------------
 ;Takes a block (X,Y) in the 16x10 grid of tetris and returns the color of the block
 ;@param		CX: X coord,
 ;		    DX: Y coord, 
