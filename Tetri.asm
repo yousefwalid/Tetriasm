@@ -3,7 +3,7 @@
 ;--------------------------- 
 INCLUDE macros.inc
 .MODEL HUGE 
-.STACK 64
+.STACK 512
 .DATA
 ;INSERT DATA HERE
 GAMESCRWIDTH        DW  100     ;width of each screen
