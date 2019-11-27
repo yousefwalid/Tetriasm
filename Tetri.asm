@@ -42,7 +42,7 @@ rightPieceOrientation		DB	?			;contains the current orientation of the piece
 rightPieceLocX				DB	?			;the Xcoord of the top left corner
 rightPieceLocY				DB	?			;the Ycoord of the top left corner
 rightPieceData				DB	16 DUP(?)	;contains the 4x4 matrix of the piece (after orientation)
-rightPieceSpeed				DB	2			;contains the falling speed of the right piece
+rightPieceSpeed				DB	1			;contains the falling speed of the right piece
 
 tempPieceOffset				DW	?			;contains the address of the current piece
 
@@ -538,25 +538,25 @@ RotatePiece		PROC NEAR
 				
 				MOV AL,[SI]					;Checks ID of the current piece and stores the offset of the original piece's Data in DI
 				CMP AL,0
-				JZ	ROTATE
+				JZ	ORIEN
 				ADD DI,40H
 				CMP AL,1
-				JZ ROTATE
+				JZ ORIEN
 				ADD DI,40H
 				CMP AL,2
-				JZ ROTATE
+				JZ ORIEN
 				ADD DI,40H
 				CMP AL,3
-				JZ ROTATE
+				JZ ORIEN
 				ADD DI,40H
 				CMP AL,4
-				JZ ROTATE
+				JZ ORIEN
 				ADD DI,40H
 				CMP AL,5
-				JZ ROTATE
+				JZ ORIEN
 				ADD DI,40H	
 
-ROTATE:										;Checks the current piece orientation to determine which orientation of the piece to choose
+ORIEN:										;Checks the current piece orientation to determine which orientation of the piece to choose
 				INC SI	
 				MOV AX,[SI]
 				CMP AL,0
@@ -567,9 +567,14 @@ ROTATE:										;Checks the current piece orientation to determine which orient
 				JZ ROTATE270
 				CMP AL,3
 				JZ ROTATE360
-
-ROTATE90:		
 				
+		
+
+ROTATE90:		;Checks for collision before rotating the piece	
+				MOV CX,10H
+				CALL RotationCollision
+				JZ BREAK
+				;Piece is clear to rotate without collision so we proceed with the rotation process
 				MOV CL,1					;sets the new orientation of the piece in the data
 				MOV [SI],CL
 				ADD SI,3					;SI now points to the left/right piece data
@@ -583,6 +588,10 @@ COPYDATA0:		MOV DL,[DI]
 				JMP BREAK
 				
 ROTATE180:		
+				MOV CX,20H
+				CALL RotationCollision
+				JZ BREAK
+				;Piece is clear to rotate without collision so we proceed with the rotation process
 				MOV CL,2					;sets the new orientation of the piece in the data
 				MOV [SI],CL
 				ADD SI,3					;SI now points to the left/right piece data
@@ -596,6 +605,10 @@ COPYDATA1:		MOV DL,[DI]
 				JMP BREAK
 				
 ROTATE270:		
+				MOV CX,30H
+				CALL RotationCollision
+				JZ BREAK
+				;Piece is clear to rotate without collision so we proceed with the rotation process
 				MOV CL,3					;sets the new orientation of the piece in the data
 				MOV [SI],CL
 				ADD SI,3					;SI now points to the left/right piece data
@@ -609,6 +622,10 @@ COPYDATA2:		MOV DL,[DI]
 				JMP BREAK
 				
 ROTATE360:		
+				MOV CX,40H
+				CALL RotationCollision
+				JZ BREAK
+				;Piece is clear to rotate without collision so we proceed with the rotation process
 				MOV CL,0					;sets the new orientation of the piece in the data
 				MOV [SI],CL
 				ADD SI,3					;SI now points to the left/right piece data
@@ -961,6 +978,37 @@ GenerateRandomNumber	PROC 	NEAR
 						RET
 GenerateRandomNumber	ENDP
 ;---------------------------
-
-
+;Procedure to check for collision before rotation
+;@param			CX:Added number to go the correct piece
+;@				ZF:if 0 then collided ,1 clear to rotate
+RotationCollision	PROC	NEAR
+				PUSHA
+				DEC SI						;SI Points to PieceID
+				ADD DI,CX					;DI Points to the data after applying the rotation
+				MOV BX,DI					;BX hold temporarily offset of the data after rotation
+				MOV DI,offset collisionPieceId	;DI = collisionPieceID
+				MOV CX,4
+COPYCOLL0:		MOV AL,[SI]
+				MOV [DI],AL
+				INC SI
+				INC DI
+				LOOP COPYCOLL0
+				ADD SI,2H
+				ADD DI,2H
+				MOV AL,[SI]
+				MOV [DI],AL
+				DEC DI
+				MOV SI,BX
+				MOV CX,16
+COPYCOLLDATA0:	MOV AL,[SI]
+				MOV [DI],AL
+				INC SI
+				INC DI
+				LOOP COPYCOLLDATA0
+				CALL CheckCollision
+				CMP AL,1
+				POPA
+				RET
+RotationCollision	ENDP
+;---------------------------
 END     MAIN
