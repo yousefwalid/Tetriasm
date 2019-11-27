@@ -100,8 +100,9 @@ MAIN    PROC    FAR
 		MOV AX, @DATA   ;SETUP DATA ADDRESS
 		MOV DS, AX      ;MOV DATA ADDRESS TO DS
 
-		MOV AH, 0       ;PREPARE GFX MODE
-		MOV AL, 13H
+		MOV AH, 4FH       ;PREPARE GFX MODE
+		MOV AL, 02H
+		MOV BX,105H
 		INT 10H         ;ENTER GFX MODE
 
 		CALL DrawGameScr
@@ -917,5 +918,49 @@ CollisionHappens:
 				RET
 CheckCollision	ENDP
 ;---------------------------
+;Procedure to generate a random piece and set it's data in current screen data
+;@param		SI:0 for left screen,4 for right screen
+;@return 	none
+GenerateRandomPiece		PROC 	NEAR
+						PUSHA
+						MOV AH,2CH
+						INT 21H		;Returns seconds in DH
+						MOV AX,0
+						MOV AL,DH	;AL=Seconds
+						MOV CX,7
+						DIV CL
+						MOV BX,0
+						MOV BL,AH	;BL now contains the ID of the random piece
+						CALL GetTempPiece
+						CALL SetScrPieceData
+						CALL DrawPiece
+						POPA
+						
+						RET
+GenerateRandomPiece		ENDP
+
+;---------------------------
+;Procedure to generate a random piece and set it's data in current screen data
+;@param		CL: Random Number % CL 
+;@return 	BL: Generated Piece ID 
+GenerateRandomNumber	PROC 	NEAR
+						PUSH AX
+						PUSH DX
+						
+						MOV AH,2CH
+						INT 21H		;Returns seconds in DH
+						MOV AX,0
+						MOV AL,DH	;AL=Seconds
+						DIV CL
+						MOV BX,0
+						MOV BL,AH	;BL now contains the ID of the random piece
+						
+						POP DX
+						POP AX
+						
+						RET
+GenerateRandomNumber	ENDP
+;---------------------------
+
 
 END     MAIN
