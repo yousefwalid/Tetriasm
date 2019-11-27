@@ -55,13 +55,40 @@ collisionPieceData				DB	16 DUP(?)	;contains the 4x4 matrix of the piece (after 
 collisionPieceSpeed				DB	1			;contains the falling speed of the left piece
 
 ;PIECES DATA
-firstPiece 					DB 11,11,11,11,0,0,0,0,0,0,0,0,0,0,0,0	;Line shape
-secondPiece					DB 1,1,1,0,0,0,1,0,0,0,0,0,0,0,0,0	;J shape
-thirdPiece 					DB 6,6,6,0,6,0,0,0,0,0,0,0,0,0,0,0	;L shape 
+firstPiece 					DB 0,0,0,0,11,11,11,11,0,0,0,0,0,0,0,0	;Line shape
+firstPiece1					DB 0,11,0,0,0,11,0,0,0,11,0,0,0,11,0,0	;Line shape after one rotation
+firstPiece2					DB 0,0,0,0,11,11,11,11,0,0,0,0,0,0,0,0	;Line shape after two rotations
+firstPiece3					DB 0,11,0,0,0,11,0,0,0,11,0,0,0,11,0,0	;Line shape after Three rotations
+
+secondPiece					DB 1,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0	;J shape
+secondPiece1				DB 0,1,1,0,0,1,0,0,0,1,0,0,0,0,0,0	;J shape after one rotation
+secondPiece2				DB 0,0,0,0,1,1,1,0,0,0,1,0,0,0,0,0	;J shape after two rotations
+secondPiece3				DB 0,1,0,0,0,1,0,0,1,1,0,0,0,0,0,0	;J shape after three rotations
+
+thirdPiece 					DB 0,0,0,0,6,6,6,0,6,0,0,0,0,0,0,0	;L shape 
+thirdPiece1					DB 6,6,0,0,0,6,0,0,0,6,0,0,0,0,0,0	;L shape after one rotation
+thirdPiece2					DB 0,0,6,0,6,6,6,0,0,0,0,0,0,0,0,0	;L shape after two rotations
+thirdPiece3					DB 0,6,0,0,0,6,0,0,0,6,6,0,0,0,0,0	;L shape after three rotations
+
 fourthPiece 				DB 0,14,14,0,0,14,14,0,0,0,0,0,0,0,0,0	;square
-fifthPiece					DB 0,0,2,2,0,2,2,0,0,0,0,0,0,0,0,0	;S shape
-sixthPiece					DB 5,5,5,0,0,5,0,0,0,0,0,0,0,0,0,0	;T shape
-seventhPiece 				DB 4,4,0,0,0,4,4,0,0,0,0,0,0,0,0,0	;Z shape
+fourthPiece1				DB 0,14,14,0,0,14,14,0,0,0,0,0,0,0,0,0	;square after one rotation
+fourthPiece2				DB 0,14,14,0,0,14,14,0,0,0,0,0,0,0,0,0	;square after two rotations
+fourthPiece3				DB 0,14,14,0,0,14,14,0,0,0,0,0,0,0,0,0	;square after three rotation
+
+fifthPiece					DB 0,0,0,0,0,2,2,0,2,2,0,0,0,0,0,0	;S shape
+fifthPiece1					DB 0,2,0,0,0,2,2,0,0,0,2,0,0,0,0,0	;S shape after one rotation
+fifthPiece2					DB 0,0,0,0,0,2,2,0,2,2,0,0,0,0,0,0	;S shape after two rotations
+fifthPiece3					DB 0,2,0,0,0,2,2,0,0,0,2,0,0,0,0,0	;S shape after three rotations
+
+sixthPiece					DB 0,0,0,0,5,5,5,0,0,5,0,0,0,0,0,0	;T shape
+sixthPiece1					DB 0,5,0,0,5,5,0,0,0,5,0,0,0,0,0,0	;T shape after one rotation
+sixthPiece2					DB 0,5,0,0,5,5,5,0,0,0,0,0,0,0,0,0	;T shape after two rotations
+sixthPiece3					DB 0,5,0,0,0,5,5,0,0,5,0,0,0,0,0,0	;T shape after three rotations
+
+seventhPiece 				DB 0,0,0,0,4,4,0,0,0,4,4,0,0,0,0,0	;Z shape
+seventhPiece1				DB 0,0,4,0,0,4,4,0,0,4,0,0,0,0,0,0	;Z shape after one rotation
+seventhPiece2				DB 0,0,0,0,4,4,0,0,0,4,4,0,0,0,0,0	;Z shape after two rotations
+seventhPiece3				DB 0,0,4,0,0,4,4,0,0,4,0,0,0,0,0,0	;Z shape after three rotation
 
 Seconds						DB 99			;Contains the previous second value
 
@@ -306,7 +333,7 @@ SetScrPieceData	PROC	NEAR
 		
 		ADD DI, 4d			;jump to piece data
 		MOV AX, BX
-		MOV BX, 16d
+		MOV BX, 64d			
 		MUL BX
 		MOV BX, AX
 SETSCRPIECELOP:	
@@ -431,7 +458,7 @@ DrawPiece		ENDP
 ;@param			
 ;				BX: direction{0:down, 1:left, 2:right}
 ;				SI: screenId: 0 for left, 4 for right
-;@return		none
+;@return		NONE
 MovePiece		PROC	NEAR
 		PUSHA
 		PUSH BX
@@ -502,110 +529,100 @@ MovePiece		ENDP
 ;@param			SI: screenId: 0 for left, 4 for right
 ;@return		none
 RotatePiece		PROC NEAR
-		PUSHA
-		CALL DeletePiece
-		CALL GetTempPiece
-		MOV SI,tempPieceOffset		;Loads the address of the current piece
-		LEA DI,firstPiece
-		
-		MOV AL,[SI]					;Checks ID of the current piece and stores the offset of the original piece's Data in DI
-		CMP AL,0
-		JZ	ROTATE
-		ADD DI,10H
-		CMP AL,1
-		JZ ROTATE
-		ADD DI,10H
-		CMP AL,2
-		JZ ROTATE
-		ADD DI,10H
-		CMP AL,3
-		JZ ROTATE
-		ADD DI,10H
-		CMP AL,4
-		JZ ROTATE
-		ADD DI,10H
-		CMP AL,5
-		JZ ROTATE
-		ADD DI,10H					
-		
-ROTATE:										;Checks the current piece orientation to determine which loop to execute and updates the piece orientation
-		INC SI	
-		MOV AX,[SI]
-		CMP AL,0
-		JZ ROTATE90
-		CMP AL,1
-		JZ ROTATE180
-		CMP AL,2
-		JZ ROTATE270
-		CMP AL,3
-		JZ ROTATE360
-		
-ROTATE90:								;Rotates piece from 0 to 90
-		MOV BL,1
-		MOV [SI],BL
-		ADD SI,3H				
-		MOV AX,0CH
-OUTER90:		MOV CX,4
-		MOV BX,DI
-		ADD BX,AX 
-INNER90:		MOV DL,[BX]
-		MOV [SI],DL
-		INC SI
-		SUB BX,4
-		LOOP INNER90
-		INC AX
-		CMP AX,10H
-		JZ BREAK
-		JMP OUTER90
-		
-ROTATE180:								;Rotates piece from 90 to 180
-		MOV BL,2
-		MOV [SI],BL
-		ADD SI,3H				
-		MOV BX,DI
-		ADD BX,0FH
-OUTER180:		MOV DL,[BX]
-		MOV [SI],DL
-		INC SI
-		DEC BX
-		CMP BX,DI
-		JS BREAK
-		JMP OUTER180
+				PUSHA
+				CALL DeletePiece
+				CALL GetTempPiece
+				MOV SI,tempPieceOffset		;Loads the address of the current piece
+				LEA DI,firstPiece
 				
-ROTATE270:								;Rotates piece from 180 to 270
-		MOV BL,3
-		MOV [SI],BL
-		ADD SI,3H
-		MOV AX,3H
-OUTER270:		MOV CX,4
-		MOV BX,DI
-		ADD BX,AX
-INNER270:		MOV DL,[BX]
-		MOV [SI],DL
-		INC SI
-		ADD BX,4
-		LOOP INNER270
-		DEC AX
-		CMP AX,0
-		JS BREAK
-		JMP OUTER270
-		
-ROTATE360:								;Rotates piece from 270 to 0
-		MOV BL,0
-		MOV [SI],BL
-		ADD SI,3H				
-		MOV CX,16
-		MOV BX,DI
-OUTER360:		MOV DL,[BX]
-		MOV [SI],DL
-		INC SI
-		INC BX
-		LOOP OUTER360		
+				MOV AL,[SI]					;Checks ID of the current piece and stores the offset of the original piece's Data in DI
+				CMP AL,0
+				JZ	ROTATE
+				ADD DI,40H
+				CMP AL,1
+				JZ ROTATE
+				ADD DI,40H
+				CMP AL,2
+				JZ ROTATE
+				ADD DI,40H
+				CMP AL,3
+				JZ ROTATE
+				ADD DI,40H
+				CMP AL,4
+				JZ ROTATE
+				ADD DI,40H
+				CMP AL,5
+				JZ ROTATE
+				ADD DI,40H	
+
+ROTATE:										;Checks the current piece orientation to determine which orientation of the piece to choose
+				INC SI	
+				MOV AX,[SI]
+				CMP AL,0
+				JZ ROTATE90
+				CMP AL,1
+				JZ ROTATE180
+				CMP AL,2
+				JZ ROTATE270
+				CMP AL,3
+				JZ ROTATE360
+
+ROTATE90:		
+				
+				MOV CL,1					;sets the new orientation of the piece in the data
+				MOV [SI],CL
+				ADD SI,3					;SI now points to the left/right piece data
+				ADD DI,10H					;DI now points to the data of the new orientation
+				MOV CX,16
+COPYDATA0:		MOV DL,[DI]
+				MOV [SI],DL
+				INC DI
+				INC SI
+				LOOP COPYDATA0
+				JMP BREAK
+				
+ROTATE180:		
+				MOV CL,2					;sets the new orientation of the piece in the data
+				MOV [SI],CL
+				ADD SI,3					;SI now points to the left/right piece data
+				ADD DI,20H					;DI now points to the data of the new orientation
+				MOV CX,16
+COPYDATA1:		MOV DL,[DI]
+				MOV [SI],DL
+				INC DI
+				INC SI
+				LOOP COPYDATA1
+				JMP BREAK
+				
+ROTATE270:		
+				MOV CL,3					;sets the new orientation of the piece in the data
+				MOV [SI],CL
+				ADD SI,3					;SI now points to the left/right piece data
+				ADD DI,30H					;DI now points to the data of the new orientation
+				MOV CX,16
+COPYDATA2:		MOV DL,[DI]
+				MOV [SI],DL
+				INC DI
+				INC SI
+				LOOP COPYDATA1
+				JMP BREAK
+				
+ROTATE360:		
+				MOV CL,0					;sets the new orientation of the piece in the data
+				MOV [SI],CL
+				ADD SI,3					;SI now points to the left/right piece data
+				MOV CX,16
+COPYDATA3:		MOV DL,[DI]
+				MOV [SI],DL
+				INC DI
+				INC SI
+				LOOP COPYDATA3
+				JMP BREAK
 						
 BREAK:			
-		POPA
-		CALL DrawPiece
-		RET
+				POPA
+				CALL DrawPiece				
+				RET
 RotatePiece		ENDP	
 ;---------------------------
 ;This procedure parses input and calls corresponding procedures
@@ -900,4 +917,5 @@ CollisionHappens:
 				RET
 CheckCollision	ENDP
 ;---------------------------
+
 END     MAIN
