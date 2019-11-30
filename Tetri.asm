@@ -100,7 +100,7 @@ MAIN    PROC    FAR
 		MOV AX, @DATA   ;SETUP DATA ADDRESS
 		MOV DS, AX      ;MOV DATA ADDRESS TO DS
 
-		MOV AH, 00h       ;PREPARE GFX MODE
+		MOV AH, 00H       ;PREPARE GFX MODE
 		MOV AL, 13H
 		;MOV BX,105H
 		INT 10H         ;ENTER GFX MODE
@@ -245,7 +245,6 @@ GetBlockClr	PROC	NEAR							;XXXXXXXXX - NEEDS TESTING
 	PUSH CX
 	PUSH DX
 	PUSH BX
-	
 	MOV AX, CX		;top left of (X,Y) block is 10*X + gridTopX
 	MOV BL, 10D	
 	MUL BL
@@ -325,7 +324,7 @@ SetScrPieceData	PROC	NEAR
 		MOV [DI], BX		;move id of selected piece to selectedScreenPiece
 		MOV AH, 0
 		MOV [DI+1], AH		;set orientation to 0
-		MOV AH, 00D
+		MOV AH, 0D
 		MOV [DI+3], AH		;set pieceY to 0
 		MOV AH, 04D			;set pieceX to 4
 		MOV [DI+2], AH
@@ -1008,7 +1007,7 @@ COPYCOLL0:		MOV AL,[SI]
 				ADD DI,16D
 				MOV AL,[SI]
 				MOV [DI],AL
-				SUB	DI,16D
+				SUB DI,16D
 				MOV SI,BX
 				MOV CX,16
 COPYCOLLDATA0:	MOV AL,[SI]
