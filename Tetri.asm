@@ -107,19 +107,11 @@ MAIN    PROC    FAR
 
 		CALL DrawGameScr
 		
-		MOV SI, 4
-		CALL GetTempPiece
-		MOV BX, 5
-		CALL SetScrPieceData
-		MOV SI, 4
-		CALL DrawPiece
+		MOV SI, 0
+		CALL GenerateRandomPiece
 
-		MOV SI,0
-		CALL GetTempPiece
-		MOV BX,4
-		CALL SetScrPieceData
-		MOV SI,0
-		CALL DrawPiece
+		MOV SI,4
+		CALL GenerateRandomPiece
 
 GAMELP:	
 		CALL ParseInput
@@ -322,6 +314,7 @@ DrawBlockClr	ENDP
 ;@param			BX: Piece ID			
 ;@return		none
 SetScrPieceData	PROC	NEAR
+		PUSHA
 		MOV DI,	tempPieceOffset
 		MOV SI, 0d			;initialize counter	
 		MOV [DI], BX		;move id of selected piece to selectedScreenPiece
@@ -344,6 +337,7 @@ SETSCRPIECELOP:
 		INC SI
 		CMP SI, 16d
 		JNZ SETSCRPIECELOP
+		POPA
 		RET
 SetScrPieceData	ENDP
 ;---------------------------
@@ -495,6 +489,7 @@ COLLPIECEBRK:
 		;CALL DrawPiece
 		POP BX
 		CMP AL, 1
+		PUSHF								;Saves the flags to determine if the piece moved or stayed in place
 		JZ	BREAKMOVEPIECE					;If the piece collides, break the procedure and leave
 
 		;DELETE THE PIECE FROM THE SCREEN
@@ -522,6 +517,7 @@ MOVPIECEBRK:	;DRAW THE NEW PIECE IN NEW LOCATION
 
 BREAKMOVEPIECE:
 		CALL DrawPiece
+		POPF
 		POPA
 		RET
 MovePiece		ENDP
@@ -558,7 +554,7 @@ RotatePiece		PROC NEAR
 
 ORIEN:										;Checks the current piece orientation to determine which orientation of the piece to choose
 				INC SI	
-				MOV AX,[SI]
+				MOV AL,[SI]
 				CMP AL,0
 				JZ ROTATE90
 				CMP AL,1
@@ -622,7 +618,7 @@ COPYDATA2:		MOV DL,[DI]
 				JMP BREAK
 				
 ROTATE360:		
-				MOV CX,40H
+				MOV CX,00H
 				CALL RotationCollision
 				JZ BREAK
 				;Piece is clear to rotate without collision so we proceed with the rotation process
@@ -764,10 +760,15 @@ PieceGravity	PROC	NEAR
 		MOV DI,AX			;DI=leftPieceSpeed
 		MOV CX,0			;Clears the CX before looping
 		MOV CL,[DI]			;moves the piece number of steps equal to it's speed
-MOVELEFT:		CALL MovePiece	
+MOVELEFT:		
+		CALL MovePiece
+		JZ COLL1
 		LOOP MOVELEFT
+		JMP CHECK2
+COLL1:	MOV SI,0
+		CALL GenerateRandomPiece
 		
-		MOV SI,4			
+CHECK2:	MOV SI,4			
 		CALL GetTempPiece	;sets the TempPieceOffset with the address of the rightPiece
 		MOV AX,0			;Clearing AX before using it
 		MOV AX,tempPieceOffset	;gets the rightPiece's data offset
@@ -775,10 +776,15 @@ MOVELEFT:		CALL MovePiece
 		MOV DI,AX			;DI=rightPieceSpeed
 		MOV CX,0			;Clears the CX before looping
 		MOV CL,[DI]			;moves the piece number of steps equal to it's speed
-MOVERIGHT:		CALL MovePiece	
+MOVERIGHT:		
+		CALL MovePiece
+		JZ	COLL2
 		LOOP MOVERIGHT
-		
-NO_CHANGE:		POPA
+		JMP NO_CHANGE
+COLL2:	MOV SI,4
+		CALL GenerateRandomPiece
+NO_CHANGE:	
+		POPA
 		RET
 PieceGravity	ENDP	
 ;---------------------------	
@@ -796,8 +802,8 @@ setCollisionPiece	PROC	NEAR
 
 			
 			MOV CX, 21D						;loop 21 bytes to copy all the data
-copyPieceData:		MOV BX, [SI]					;copy the data in byte to BX
-			MOV [DI], BX					;paste the data in the destination byte
+copyPieceData:		MOV BL, [SI]					;copy the data in byte to BX
+			MOV [DI], BL					;paste the data in the destination byte
 			INC DI							;increment destination offset
 			INC SI							;increment source offset
 			LOOP copyPieceData				;loop
