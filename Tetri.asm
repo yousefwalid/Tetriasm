@@ -263,9 +263,10 @@ GetBlockClr	PROC	NEAR							;XXXXXXXXX - NEEDS TESTING
 	MOV BH, 0
 	INT 10H
 	POP BX
-	POP CX
-	POP DX
+
 	POP BX
+	POP DX
+	POP CX
 	RET
 GetBlockClr	ENDP
 ;---------------------------
