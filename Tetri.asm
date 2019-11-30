@@ -11,7 +11,7 @@ GAMESCRHEIGHT       DW  160     ;height of each screen
 
 
 						;Tetris grid is 16x10, so each block is 10x10 pixels
-GAMELEFTSCRX        DW  10      ;top left corner X of left screen
+GAMELEFTSCRX        DW  30      ;top left corner X of left screen
 GAMELEFTSCRY        DW  15      ;top left corner Y of left screen
 GAMERIGHTSCRX       DW  170     ;top left corner X of right screen
 GAMERIGHTSCRY       DW  15      ;top left corner Y of right screen
@@ -100,9 +100,9 @@ MAIN    PROC    FAR
 		MOV AX, @DATA   ;SETUP DATA ADDRESS
 		MOV DS, AX      ;MOV DATA ADDRESS TO DS
 
-		MOV AH, 4FH       ;PREPARE GFX MODE
-		MOV AL, 02H
-		MOV BX,105H
+		MOV AH, 00h       ;PREPARE GFX MODE
+		MOV AL, 13H
+		;MOV BX,105H
 		INT 10H         ;ENTER GFX MODE
 
 		CALL DrawGameScr
@@ -242,7 +242,10 @@ drawPixelsFrame ENDP
 ;			SI: screen ID: 0 for left, 4 for right
 ;@return	AL:	color for (X,Y) grid
 GetBlockClr	PROC	NEAR							;XXXXXXXXX - NEEDS TESTING
-	PUSHA
+	PUSH CX
+	PUSH DX
+	PUSH BX
+	
 	MOV AX, CX		;top left of (X,Y) block is 10*X + gridTopX
 	MOV BL, 10D	
 	MUL BL
@@ -256,11 +259,13 @@ GetBlockClr	PROC	NEAR							;XXXXXXXXX - NEEDS TESTING
 	ADD AX, GAMELEFTSCRY[SI]
 	MOV DX, AX
 	
-	POPA
 	MOV AH, 0DH
 	PUSH BX
 	MOV BH, 0
 	INT 10H
+	POP BX
+	POP CX
+	POP DX
 	POP BX
 	RET
 GetBlockClr	ENDP
@@ -320,7 +325,7 @@ SetScrPieceData	PROC	NEAR
 		MOV [DI], BX		;move id of selected piece to selectedScreenPiece
 		MOV AH, 0
 		MOV [DI+1], AH		;set orientation to 0
-		MOV AH, 0D
+		MOV AH, 00D
 		MOV [DI+3], AH		;set pieceY to 0
 		MOV AH, 04D			;set pieceX to 4
 		MOV [DI+2], AH
@@ -999,11 +1004,11 @@ COPYCOLL0:		MOV AL,[SI]
 				INC SI
 				INC DI
 				LOOP COPYCOLL0
-				ADD SI,2H
-				ADD DI,2H
+				ADD SI,16D
+				ADD DI,16D
 				MOV AL,[SI]
 				MOV [DI],AL
-				DEC DI
+				SUB	DI,16D
 				MOV SI,BX
 				MOV CX,16
 COPYCOLLDATA0:	MOV AL,[SI]
