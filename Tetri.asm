@@ -92,8 +92,9 @@ seventhPiece3				DB 0,0,4,0,0,4,4,0,0,4,0,0,0,0,0,0	;Z shape after three rotatio
 
 Seconds						DB 99			;Contains the previous second value
 
-FRAMEWIDTH        equ  10      ;width of each screen
-FRAMEHEIGHT       equ  16     ;height of each screen
+FRAMEWIDTH        			EQU  10     ;width of each screen
+FRAMEHEIGHT       			EQU  16     ;height of each screen
+GRAYBLOCKCLR				EQU	 8		;color of gray solid blocks
 .CODE
 ;---------------------------        
 MAIN    PROC    FAR
@@ -106,7 +107,7 @@ MAIN    PROC    FAR
 		INT 10H         ;ENTER GFX MODE
 
 		CALL DrawGameScr
-		
+
 		MOV SI, 0
 		CALL GenerateRandomPiece
 
@@ -771,6 +772,7 @@ MOVELEFT:
 		LOOP MOVELEFT
 		JMP CHECK2
 COLL1:	MOV SI,0
+		CALL CheckLineClear		;check if a line has been cleared
 		CALL GenerateRandomPiece
 		
 CHECK2:	MOV SI,4			
@@ -787,14 +789,12 @@ MOVERIGHT:
 		LOOP MOVERIGHT
 		JMP NO_CHANGE
 COLL2:	MOV SI,4
+		CALL CheckLineClear		;check if a line has been cleared
 		CALL GenerateRandomPiece
 NO_CHANGE:	
 		POPA
 		RET
 PieceGravity	ENDP	
-;---------------------------	
-
-
 ;---------------------------
 ;This procedure sets the collision piece by copying temp piece data to collision data
 ;@params	none
@@ -928,7 +928,7 @@ outOfScreen:
 CheckCollisionWithFrame	ENDP
 ;---------------------------
 ;Procedure to check the collision with both the frame and blocks
-;@params: NONE
+;@params: SI:0 for left screen,4 for right screen
 ;@return: AL: 1 collision, 0 no collision
 CheckCollision	PROC	NEAR
 				CALL CheckCollisionWithFrame
@@ -1021,5 +1021,141 @@ COPYCOLLDATA0:	MOV AL,[SI]
 				POPA
 				RET
 RotationCollision	ENDP
+;---------------------------
+;Shifts all the line up from Y = 0:14	 and X = 0:9
+;@param			SI: screen ID: 0 for left, 4 for right
+;@return		none
+ShiftLinesUp	PROC	NEAR
+				PUSHA
+
+				CALL GetTempPiece
+				CALL DeletePiece		;we need to remove the piece before shifting, to avoid shifting the piece itself
+
+				MOV DX, 0D				;initialize dx at 0
+SHIFTUPLOOPY:
+				MOV CX, 0D
+SHIFTUPLOOPX:
+				INC DX
+				CALL GetBlockClr		;get block color at (X,Y+1)
+				DEC DX
+				CALL DrawBlockClr		;draw block color at (X,Y)
+
+				INC CX
+				CMP CX, FRAMEWIDTH		;check if X is 10
+				JNZ SHIFTUPLOOPX		;if it is, start back from X = 0 at new Y
+
+				INC DX	
+				CMP DX, FRAMEHEIGHT-1	;check if Y is = 15
+				JNZ SHIFTUPLOOPY
+
+				CALL DrawPiece
+
+				POPA
+				RET
+ShiftLinesUp	ENDP
+;---------------------------
+;Shifts all the line down from Y = Y_in:15 and X = 0:9
+;@param 		SI: screen ID: 0 for left, 4 for right
+;				DX:	Y_in to begin shifting down at
+;@return		none
+ShiftLinesDown	PROC	NEAR
+				PUSHA
+				;DX is initially Y_in
+SHIFTDOWNLOOPY:
+				MOV CX, 0D
+SHIFTDOWNLOOPX:
+				DEC DX
+				CALL GetBlockClr		;get block color at (X,Y+1)
+				INC DX
+				CALL DrawBlockClr		;draw block color at (X,Y)
+
+				INC CX
+				CMP CX, FRAMEWIDTH		;check if X is = FRAME WIDTH
+				JNZ SHIFTDOWNLOOPX		;if it is, start back from X = 0 at new Y
+
+				DEC DX	
+				CMP DX, 0FFFFH			;check if Y is = -1
+				JNZ SHIFTDOWNLOOPY
+
+				POPA
+				RET
+ShiftLinesDown	ENDP
+;---------------------------
+;This procedure inserts a new gray line at the screen
+;@param			SI: screen ID: 0 for left, 4 for right
+;@return		none
+InsertLine		PROC	NEAR
+				PUSHA
+				CALL ShiftLinesUp		;shift all lines up 1 block
+
+				;draw a gray line at X = 0
+				MOV DX, FRAMEHEIGHT-1
+				MOV CX, 0D
+				MOV AL, GRAYBLOCKCLR
+INSERTLINELOOPX:						;loop from x=0:10 and draw gray block		
+				CALL DrawBlockClr
+				INC CX
+				CMP CX, FRAMEWIDTH		
+				JNZ INSERTLINELOOPX
+
+				POPA
+				RET
+InsertLine		ENDP
+;---------------------------
+;This procedure removes the line at Y = Y_in and shifts all lines down
+;@param			SI: screen ID: 0 for left, 4 for right
+;				DX: Y_in to have the line removed at
+;@return		none
+RemoveLine		PROC	NEAR
+
+				CALL ShiftLinesDown
+
+				RET
+RemoveLine		ENDP
+;---------------------------
+;This procedure checks if a full line has been completed, if it is, it gets cleared
+;@param			SI: screen ID: 0 for left, 4 for right
+;@return		none
+CheckLineClear	PROC	NEAR
+				PUSHA
+
+				MOV DX, 0D
+CHECKLINELOOPY:
+				MOV CX, 0D
+				MOV BX, 0D 					;counter for the number of colored blocks
+CHECKLINELOOPX:
+				CALL GetBlockClr
+				CMP AL, 0D					;if block color is not black or gray, inc BX
+				JE 	CHECKLINESKIPINC
+				CMP AL, GRAYBLOCKCLR
+				JE	CHECKLINESKIPINC
+
+				INC BX
+				INC CX
+				CMP CX, FRAMEWIDTH
+				JNZ CHECKLINELOOPX
+CHECKLINESKIPINC:
+				CMP BX, 10D					;check if there is 16 colored blocks
+				JNZ	CHECKLINESKIPRMV		;if there is, delete that line
+				CALL RemoveLine
+				;now we need to insert a line at the other player
+				MOV AX, SI
+				CMP SI, 0D
+				JNZ CHECKLINESIIS0			;if SI is 4, make it 0, if it's 0, make it 4
+				MOV SI, 4D
+				JMP CHECKLINESIIS4
+CHECKLINESIIS0:
+				MOV SI, 0D
+CHECKLINESIIS4:
+				CALL InsertLine				;insert a line at the other player
+				MOV SI, AX					;reset the SI value back
+CHECKLINESKIPRMV:
+				INC DX
+				CMP DX, FRAMEHEIGHT
+				JNZ CHECKLINELOOPY
+
+				POPA
+				RET
+CheckLineClear	ENDP
 ;---------------------------
 END     MAIN
