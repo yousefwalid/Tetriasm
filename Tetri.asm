@@ -568,10 +568,10 @@ RotatePiece		PROC NEAR
 				PUSHA
 				CALL DeletePiece
 				CALL GetTempPiece
-				MOV SI,tempPieceOffset		;Loads the address of the current piece
+				MOV BX,tempPieceOffset		;Loads the address of the current piece
 				LEA DI,firstPiece
 				
-				MOV AL,[SI]					;Checks ID of the current piece and stores the offset of the original piece's Data in DI
+				MOV AL,[BX]					;Checks ID of the current piece and stores the offset of the original piece's Data in DI
 				CMP AL,0
 				JZ	ORIEN
 				ADD DI,40H
@@ -592,8 +592,8 @@ RotatePiece		PROC NEAR
 				ADD DI,40H	
 
 ORIEN:										;Checks the current piece orientation to determine which orientation of the piece to choose
-				INC SI	
-				MOV AL,[SI]
+				INC BX	
+				MOV AL,[BX]
 				CMP AL,0
 				JZ ROTATE90
 				CMP AL,1
@@ -611,14 +611,14 @@ ROTATE90:		;Checks for collision before rotating the piece
 				JZ BREAK
 				;Piece is clear to rotate without collision so we proceed with the rotation process
 				MOV CL,1					;sets the new orientation of the piece in the data
-				MOV [SI],CL
-				ADD SI,3					;SI now points to the left/right piece data
+				MOV [BX],CL
+				ADD BX,3					;SI now points to the left/right piece data
 				ADD DI,10H					;DI now points to the data of the new orientation
 				MOV CX,16
 COPYDATA0:		MOV DL,[DI]
-				MOV [SI],DL
+				MOV [BX],DL
 				INC DI
-				INC SI
+				INC BX
 				LOOP COPYDATA0
 				JMP BREAK
 				
@@ -628,14 +628,14 @@ ROTATE180:
 				JZ BREAK
 				;Piece is clear to rotate without collision so we proceed with the rotation process
 				MOV CL,2					;sets the new orientation of the piece in the data
-				MOV [SI],CL
-				ADD SI,3					;SI now points to the left/right piece data
+				MOV [BX],CL
+				ADD BX,3					;SI now points to the left/right piece data
 				ADD DI,20H					;DI now points to the data of the new orientation
 				MOV CX,16
 COPYDATA1:		MOV DL,[DI]
-				MOV [SI],DL
+				MOV [BX],DL
 				INC DI
-				INC SI
+				INC BX
 				LOOP COPYDATA1
 				JMP BREAK
 				
@@ -645,14 +645,14 @@ ROTATE270:
 				JZ BREAK
 				;Piece is clear to rotate without collision so we proceed with the rotation process
 				MOV CL,3					;sets the new orientation of the piece in the data
-				MOV [SI],CL
-				ADD SI,3					;SI now points to the left/right piece data
+				MOV [BX],CL
+				ADD BX,3					;SI now points to the left/right piece data
 				ADD DI,30H					;DI now points to the data of the new orientation
 				MOV CX,16
 COPYDATA2:		MOV DL,[DI]
-				MOV [SI],DL
+				MOV [BX],DL
 				INC DI
-				INC SI
+				INC BX
 				LOOP COPYDATA1
 				JMP BREAK
 				
@@ -662,13 +662,13 @@ ROTATE360:
 				JZ BREAK
 				;Piece is clear to rotate without collision so we proceed with the rotation process
 				MOV CL,0					;sets the new orientation of the piece in the data
-				MOV [SI],CL
-				ADD SI,3					;SI now points to the left/right piece data
+				MOV [BX],CL
+				ADD BX,3					;SI now points to the left/right piece data
 				MOV CX,16
 COPYDATA3:		MOV DL,[DI]
-				MOV [SI],DL
+				MOV [BX],DL
 				INC DI
-				INC SI
+				INC BX
 				LOOP COPYDATA3
 				JMP BREAK
 						
@@ -1023,30 +1023,30 @@ GenerateRandomNumber	PROC 	NEAR
 GenerateRandomNumber	ENDP
 ;---------------------------
 ;Procedure to check for collision before rotation
-;@param			CX:Added number to go the correct piece
+;@param			CX:Added number to go the correct piece, SI:0 for left , 4 for right
 ;@				ZF:if 0 then collided ,1 clear to rotate
 RotationCollision	PROC	NEAR
 				PUSHA
-				DEC SI						;SI Points to PieceID
+				DEC BX						;SI Points to PieceID
 				ADD DI,CX					;DI Points to the data after applying the rotation
-				MOV BX,DI					;BX hold temporarily offset of the data after rotation
+				PUSH DI					;Stack holds temporarily offset of the data after rotation
 				MOV DI,offset collisionPieceId	;DI = collisionPieceID
 				MOV CX,4
-COPYCOLL0:		MOV AL,[SI]
+COPYCOLL0:		MOV AL,[BX]
 				MOV [DI],AL
-				INC SI
+				INC BX
 				INC DI
 				LOOP COPYCOLL0
-				ADD SI,16D
+				ADD BX,16D
 				ADD DI,16D
-				MOV AL,[SI]
+				MOV AL,[BX]
 				MOV [DI],AL
 				SUB DI,16D
-				MOV SI,BX
+				POP BX			;BX holds offset of the data after rotation
 				MOV CX,16
-COPYCOLLDATA0:	MOV AL,[SI]
+COPYCOLLDATA0:	MOV AL,[BX]
 				MOV [DI],AL
-				INC SI
+				INC BX
 				INC DI
 				LOOP COPYCOLLDATA0
 				CALL CheckCollision
