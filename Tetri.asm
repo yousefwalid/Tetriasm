@@ -131,9 +131,7 @@ MOV AH, 00H ; Set video mode
 MOV AL, 13H ; Mode 13h
 INT 10H 
  
-CALL DisplayMenu 
-
-
+;CALL DisplayMenu 
 ;-----------------------------------------------
 
 		MOV AH, 00H       ;PREPARE GFX MODE
@@ -1089,7 +1087,7 @@ SHIFTUPLOOPX:
 				RET
 ShiftLinesUp	ENDP
 ;---------------------------
-;Shifts all the line down from Y = Y_in:15 and X = 0:9
+;Shifts all the line down from Y = 0:Y_in and X = 0:9
 ;@param 		SI: screen ID: 0 for left, 4 for right
 ;				DX:	Y_in to begin shifting down at
 ;@return		none
@@ -1109,9 +1107,17 @@ SHIFTDOWNLOOPX:
 				JNZ SHIFTDOWNLOOPX		;if it is, start back from X = 0 at new Y
 
 				DEC DX	
-				CMP DX, 0FFFFH			;check if Y is = -1
+				CMP DX, 0D 				;check if Y is = 0
 				JNZ SHIFTDOWNLOOPY
 
+				MOV CX, 0D
+				MOV DX, 0D
+				MOV AL, 0D
+CLEARFIRSTLINE:	
+				CALL DrawBlockClr				
+				INC CX
+				CMP CX, 10D
+				JNZ CLEARFIRSTLINE
 				POPA
 				RET
 ShiftLinesDown	ENDP
