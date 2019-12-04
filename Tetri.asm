@@ -6,10 +6,13 @@ INCLUDE macros.inc
 .STACK 512
 .DATA
 ;INSERT DATA HERE
-GAMESCRWIDTH        DW  100     ;width of each screen
-GAMESCRHEIGHT       DW  160     ;height of each screen
 
+FRAMEWIDTH        	EQU  10      ;width of each frame
+FRAMEHEIGHT       	EQU  18	     ;height of each frame
+GAMESCRWIDTH        EQU  FRAMEWIDTH * 10     ;width of each screen
+GAMESCRHEIGHT       EQU  FRAMEHEIGHT * 10     ;height of each screen
 
+BLOCKSIZE			EQU 10
 						;Tetris grid is 16x10, so each block is 10x10 pixels
 GAMELEFTSCRX        DW  30      ;top left corner X of left screen
 GAMELEFTSCRY        DW  15      ;top left corner Y of left screen
@@ -117,8 +120,6 @@ seventhPiece3				DB 0,0,4,0,0,4,4,0,0,4,0,0,0,0,0,0	;Z shape after three rotatio
 
 Seconds						DB 99			;Contains the previous second value
 
-FRAMEWIDTH        			EQU  10     ;width of each screen
-FRAMEHEIGHT       			EQU  16     ;height of each screen
 GRAYBLOCKCLR				EQU	 8		;color of gray solid blocks
 .CODE
 ;---------------------------        
@@ -127,17 +128,21 @@ MAIN    PROC    FAR
 		MOV DS, AX      ;MOV DATA ADDRESS TO DS
 		MOV ES, AX
 		;call videomode13h
-MOV AH, 00H ; Set video mode
-MOV AL, 13H ; Mode 13h
-INT 10H 
+		MOV AH, 00H ; Set video mode
+		MOV AL, 13H ; Mode 13h
+		INT 10H 
  
-;CALL DisplayMenu 
+		;CALL DisplayMenu 
 ;-----------------------------------------------
 
-		MOV AH, 00H       ;PREPARE GFX MODE
-		MOV AL, 13H
+		;MOV AH, 00H       ;PREPARE GFX MODE
+		;MOV AL, 13H
 		;MOV BX,105H
-		INT 10H         ;ENTER GFX MODE
+		;INT 10H         ;ENTER GFX MODE
+
+		mov     AX, 4F02H
+        mov     BX, 0105H
+        INT     10H
 
 		CALL DrawGameScr
 
@@ -270,7 +275,7 @@ DRAWPIXELVER:
 	RET
 drawPixelsFrame ENDP
 ;---------------------------------
-;Takes a block (X,Y) in the 16x10 grid of tetris and returns the color of the block
+;Takes a block (X,Y) in the N*M grid of tetris and returns the color of the block
 ;@param		CX: X coord,
 ;		    DX: Y coord, 
 ;			SI: screen ID: 0 for left, 4 for right
@@ -279,12 +284,12 @@ GetBlockClr	PROC	NEAR							;XXXXXXXXX - NEEDS TESTING
 	PUSH CX
 	PUSH DX
 	PUSH BX
-	MOV AX, CX		;top left of (X,Y) block is 10*X + gridTopX
-	MOV BL, 10D	
+	MOV AX, CX		;top left of (X,Y) block is BLOCKSIZE*X + gridTopX
+	MOV BL, BLOCKSIZE	
 	MUL BL
 	ADD AX, 5D
 	ADD AX, GAMELEFTSCRX[SI]
-	MOV	CX, AX		;CX = 10*Xcoord + gridTopX + 5
+	MOV	CX, AX		;CX = BLOCKSIZE*Xcoord + gridTopX + 5
 	
 	MOV AX, DX		;same as above
 	MUL BL
@@ -304,7 +309,7 @@ GetBlockClr	PROC	NEAR							;XXXXXXXXX - NEEDS TESTING
 	RET
 GetBlockClr	ENDP
 ;---------------------------
-;Takes a block (X,Y) in the 16x10 grid of tetris and colors the block with a given color
+;Takes a block (X,Y) in the N*M grid of tetris and colors the block with a given color
 ;@param		CX:	X coord,
 ;			DX: Y coord,
 ;			SI: screen ID: 0 for left, 4 for right
@@ -315,27 +320,27 @@ DrawBlockClr	PROC	NEAR
 	MOV DI, AX		;push color to DI
 					;go to top left of block
 	MOV	AX, CX
-	MOV BL, 10D
+	MOV BL, BLOCKSIZE
 	MUL BL
 	ADD AX, GAMELEFTSCRX[SI]
-	MOV CX, AX		;CX = 10*Xcoord + gridTopX
+	MOV CX, AX		;CX = BLOCKSIZE*Xcoord + gridTopX
 	
 	MOV AX, DX
 	MUL BL
 	ADD AX, GAMELEFTSCRY[SI]
-	MOV DX, AX		;DX = 10*Ycoord + gridTopY
+	MOV DX, AX		;DX = BLOCKSIZE*Ycoord + gridTopY
 	
 	MOV AX, DI		;pop color to AX
 	
 	MOV DI, CX		;DI = limit of CX
-	ADD DI, 10		;DI = CX + 10 (LIMIT OF CX)
+	ADD DI, BLOCKSIZE		;DI = CX + BLOCKSIZE (LIMIT OF CX)
 	MOV BX, DX		;BX = limit of DX
-	ADD	BX, 10		;BX = DX + 10 (LIMIT OF DX)
+	ADD	BX, BLOCKSIZE		;BX = DX + BLOCKSIZE (LIMIT OF DX)
 
 	MOV AH, 0CH
 LOOPX:
 	MOV DX, BX		;Reset DX to original Y
-	SUB DX, 10
+	SUB DX, BLOCKSIZE
 LOOPY:
 	INT 10H			;draw pixel at (CX,DX)
 	INC DX			;go to next pixel Y
