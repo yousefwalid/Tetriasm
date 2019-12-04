@@ -7,16 +7,18 @@ INCLUDE macros.inc
 .DATA
 ;INSERT DATA HERE
 
-FRAMEWIDTH        	EQU  10      ;width of each frame
-FRAMEHEIGHT       	EQU  18	     ;height of each frame
-GAMESCRWIDTH        EQU  FRAMEWIDTH * 10     ;width of each screen
-GAMESCRHEIGHT       EQU  FRAMEHEIGHT * 10     ;height of each screen
+FRAMEWIDTH        	EQU  10      ;width of each frame in blocks
+FRAMEHEIGHT       	EQU  20     ;height of each frame in blocks
 
-BLOCKSIZE			EQU 10
+BLOCKSIZE			EQU 20
+
+GAMESCRWIDTH        EQU  FRAMEWIDTH * BLOCKSIZE     ;width of each screen in pixels
+GAMESCRHEIGHT       EQU  FRAMEHEIGHT * BLOCKSIZE     ;height of each screen in pixels
+
 						;Tetris grid is 16x10, so each block is 10x10 pixels
 GAMELEFTSCRX        DW  30      ;top left corner X of left screen
 GAMELEFTSCRY        DW  15      ;top left corner Y of left screen
-GAMERIGHTSCRX       DW  170     ;top left corner X of right screen
+GAMERIGHTSCRX       DW  370     ;top left corner X of right screen
 GAMERIGHTSCRY       DW  15      ;top left corner Y of right screen
 
 ;===========================================================================
@@ -119,6 +121,8 @@ seventhPiece2				DB 0,0,0,0,4,4,0,0,0,4,4,0,0,0,0,0	;Z shape after two rotations
 seventhPiece3				DB 0,0,4,0,0,4,4,0,0,4,0,0,0,0,0,0	;Z shape after three rotation
 
 Seconds						DB 99			;Contains the previous second value
+
+GameFlag					DB 1			;Status of the game
 
 GRAYBLOCKCLR				EQU	 8		;color of gray solid blocks
 .CODE
