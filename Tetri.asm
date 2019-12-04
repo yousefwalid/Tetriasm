@@ -117,6 +117,8 @@ seventhPiece3				DB 0,0,4,0,0,4,4,0,0,4,0,0,0,0,0,0	;Z shape after three rotatio
 
 Seconds						DB 99			;Contains the previous second value
 
+GameFlag					DB 1			;Status of the game
+
 FRAMEWIDTH        			EQU  10     ;width of each screen
 FRAMEHEIGHT       			EQU  16     ;height of each screen
 GRAYBLOCKCLR				EQU	 8		;color of gray solid blocks
@@ -150,9 +152,12 @@ INT 10H
 GAMELP:	
 		CALL ParseInput
 		CALL PieceGravity
+		MOV AL,GameFlag
+		CMP AL,1
+		JNZ Finished
 		JMP GAMELP
 
-		MOV AH, 4CH     ;SETUP FOR EXIT
+Finished:	MOV AH, 4CH     ;SETUP FOR EXIT
 		INT 21H         ;RETURN CONTROL TO DOS
 MAIN    ENDP
 ;---------------------------
@@ -981,7 +986,7 @@ CheckCollision	ENDP
 ;---------------------------
 ;Procedure to generate a random piece and set it's data in current screen data
 ;@param		SI:0 for left screen,4 for right screen
-;@return 	none
+;@return 	GameFlag Var = Screen that lost
 GenerateRandomPiece		PROC 	NEAR
 						PUSHA
 						MOV AH,2CH
@@ -994,9 +999,17 @@ GenerateRandomPiece		PROC 	NEAR
 						MOV BL,AH	;BL now contains the ID of the random piece
 						CALL GetTempPiece
 						CALL SetScrPieceData
+						CALL setCollisionPiece
+						CALL CheckCollision
+						CMP AL,1
+						JZ COLLIDE
 						CALL DrawPiece
 						POPA
-						
+						RET
+COLLIDE:				
+						MOV BX,SI
+						MOV GameFlag,BL
+						POPA
 						RET
 GenerateRandomPiece		ENDP
 
