@@ -15,11 +15,41 @@ BLOCKSIZE			EQU 20
 GAMESCRWIDTH        EQU  FRAMEWIDTH * BLOCKSIZE     ;width of each screen in pixels
 GAMESCRHEIGHT       EQU  FRAMEHEIGHT * BLOCKSIZE     ;height of each screen in pixels
 
-						;Tetris grid is 16x10, so each block is 10x10 pixels
-GAMELEFTSCRX        DW  30      ;top left corner X of left screen
-GAMELEFTSCRY        DW  15      ;top left corner Y of left screen
-GAMERIGHTSCRX       DW  370     ;top left corner X of right screen
-GAMERIGHTSCRY       DW  15      ;top left corner Y of right screen
+FRAMETEXTOFFSET		EQU 50
+
+NEXTPIECETEXTLENGTH EQU 4
+NEXTPIECETEXT		DB	"Next"
+LEFTNEXTPIECELOCX	EQU 45
+LEFTNEXTPIECELOCY	EQU 3
+RIGHTNEXTPIECELOCX	EQU 107
+RIGHTNEXTPIECELOCY	EQU 3
+
+
+SCORETEXTLENGTH		EQU 5
+SCORETEXT			DB	"Score"
+LeftScoreLocX		EQU 45
+LeftScoreLocY		EQU 10
+RightScoreLocX		EQU 107
+RightScoreLocY		EQU 10
+
+LeftScoreTextLength EQU 2
+LeftScoreText		DB "00"
+LeftScoreStringLocX	EQU 45
+LeftScoreStringLocY	EQU 13
+
+RightScoreTextLength 	EQU 2
+RightScoreText			DB "00"
+RightScoreStringLocX	EQU 107
+RightScoreStringLocY	EQU 13
+
+DeltaScore	EQU 1
+
+						;Tetris grid is 20X10, so each block is 20X20 pixels
+GAMELEFTSCRX        DW  100     ;top left corner X of left screen
+GAMELEFTSCRY        DW  30      ;top left corner Y of left screen
+GAMERIGHTSCRX       DW  600     ;top left corner X of right screen
+GAMERIGHTSCRY       DW  30      ;top left corner Y of right screen
+
 
 ;===========================================================================
  Menu11 DB "Please enter your name:"
@@ -66,6 +96,7 @@ leftPieceLocX				DB	?			;the Xcoord of the top left corner
 leftPieceLocY				DB	?			;the Ycoord of the top left corner
 leftPieceData				DB	16 DUP(?)	;contains the 4x4 matrix of the piece (after orientation)
 leftPieceSpeed				DB	1			;contains the falling speed of the left piece
+Player1Score				DB	0			;score of first player
 
 rightPieceId				DB	?			;contains the ID of the current piece
 rightPieceOrientation		DB	?			;contains the current orientation of the piece
@@ -73,6 +104,7 @@ rightPieceLocX				DB	?			;the Xcoord of the top left corner
 rightPieceLocY				DB	?			;the Ycoord of the top left corner
 rightPieceData				DB	16 DUP(?)	;contains the 4x4 matrix of the piece (after orientation)
 rightPieceSpeed				DB	1			;contains the falling speed of the right piece
+Player2Score				DB	0			;score of second player
 
 tempPieceOffset				DW	?			;contains the address of the current piece
 
@@ -149,13 +181,14 @@ MAIN    PROC    FAR
         INT     10H
 
 		CALL DrawGameScr
+		CALL DrawGUIText
 
 		MOV SI, 0
 		CALL GenerateRandomPiece
 
 		MOV SI,4
 		CALL GenerateRandomPiece
-
+		
 GAMELP:	
 		CALL ParseInput
 		CALL PieceGravity
@@ -1199,14 +1232,20 @@ CHECKLINESKIPINC:
 				CMP BX, 10D					;check if there is 16 colored blocks
 				JNZ	CHECKLINESKIPRMV		;if there is, delete that line
 				CALL RemoveLine
+
 				;now we need to insert a line at the other player
 				MOV AX, SI
 				CMP SI, 0D
 				JNZ CHECKLINESIIS0			;if SI is 4, make it 0, if it's 0, make it 4
+				ADD Player2Score, DeltaScore		;increase score
+				CALL UpdatePlayersScore
+
 				MOV SI, 4D
 				JMP CHECKLINESIIS4
 CHECKLINESIIS0:
 				MOV SI, 0D
+				ADD Player1Score, DeltaScore		;increase score
+				CALL UpdatePlayersScore
 CHECKLINESIIS4:
 				CALL InsertLine				;insert a line at the other player
 				MOV SI, AX					;reset the SI value back
@@ -1405,6 +1444,100 @@ CheckR:     CMP AH,5H
 			
 DisplayMenu      ENDP
 ;---------------------------------------------------
+;Parses score number into text to be displayed on the screen
+;Params		NONE
+;Returns 	NONE
+ChangeScoreToText	PROC	NEAR
+					PUSHA
+					MOV AL,Player1Score
+					MOV CL,10D
+					DIV CL
+					ADD AL,30H
+					LEA SI,LeftScoreText
+					MOV [SI],AL
+					INC SI
+					ADD AH,30H
+					MOV [SI],AH
 
+					MOV AL,Player2Score
+					MOV CL,10D
+					DIV CL
+					ADD AL,30H
+					LEA SI,RightScoreText
+					MOV [SI],AL
+					INC SI
+					ADD AH,30H
+					MOV [SI],AH
+					
+					POPA
+					RET
+ChangeScoreToText	ENDP
+;---------------------------------------------------
+;This procedure is responsible for drawing the text for the UI
+;@param				none
+;@return			none
+DrawGUIText		PROC	NEAR
+				mov ah, 13h
+				mov cx, NEXTPIECETEXTLENGTH
+				mov dh, LEFTNEXTPIECELOCY
+				mov dl, LEFTNEXTPIECELOCX
+				lea bp, NEXTPIECETEXT
+				mov bx, 4d
+				int 10h
 
+				mov ah, 13h
+				mov cx, NEXTPIECETEXTLENGTH
+				mov dh, RIGHTNEXTPIECELOCY
+				mov dl, RIGHTNEXTPIECELOCX
+				lea bp, NEXTPIECETEXT
+				mov bx, 4d
+				int 10h
+				
+				mov ah, 13h
+				mov cx, SCORETEXTLENGTH
+				mov dh, LeftScoreLocY
+				mov dl, LeftScoreLocX
+				lea bp, SCORETEXT
+				mov bx, 4d
+				int 10h
+				
+				mov ah, 13h
+				mov cx, SCORETEXTLENGTH
+				mov dh, RightScoreLocY
+				mov dl, RightScoreLocX
+				lea bp, SCORETEXT
+				mov bx, 4d
+				int 10h
+
+				CALL UpdatePlayersScore
+				RET
+DrawGUIText		ENDP
+;---------------------------------------------------
+;This procedure parses the scores of the two players and changes
+;it to strings, then draws them on the screen
+;@param			none
+;@return		none
+UpdatePlayersScore	PROC	NEAR
+					PUSHA
+					CALL ChangeScoreToText
+
+					mov ah, 13h
+					mov cx, LeftScoreTextLength
+					mov dh, LeftScoreStringLocY
+					mov dl, LeftScoreStringLocX
+					lea bp, LeftScoreText
+					mov bx, 4d
+					int 10h
+
+					mov ah, 13h
+					mov cx, RightScoreTextLength
+					mov dh, RightScoreStringLocY
+					mov dl, RightScoreStringLocX
+					lea bp, RightScoreText
+					mov bx, 4d
+					int 10h
+					POPA
+					RET
+UpdatePlayersScore	ENDP
+;---------------------------------------------------
 END     MAIN
