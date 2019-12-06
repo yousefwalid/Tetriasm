@@ -173,10 +173,6 @@ leftPowerupFreezeCount					DB  0
 leftPowerupSpeedUpCount					DB  0
 leftPowerupRemoveLinesCount				DB	0
 leftPowerupChangePieceCount				DB 	0
-leftPowerup1Count			DB  0
-leftPowerup2Count			DB  0
-leftPowerup3Count			DB	0
-leftPowerup4Count			DB 	0
 leftPowerup5Count			DB 	0
 leftPieceRotationLock 		DB 0 	;lock the rotation of the piece 0:locked 1:free
 
@@ -191,11 +187,6 @@ rightPowerupFreezeCount					DB 	0
 rightPowerupSpeedUpCount				DB	0
 rightPowerupRemoveLinesCount			DB	0
 rightPowerupChangePieceCount			DB	0
-Player2Score				DB	0			;score of second player
-rightPowerup1Count			DB 	0
-rightPowerup2Count			DB	0
-rightPowerup3Count			DB	0
-rightPowerup4Count			DB	0
 rightPowerup5Count			DB	0
 rightPieceRotationLock	DB 0	;lock the rotation of the piece 0:locked 1:free
 
