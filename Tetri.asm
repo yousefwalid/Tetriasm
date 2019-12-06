@@ -35,12 +35,82 @@ RightScoreLocY		EQU 10
 LeftScoreTextLength EQU 2
 LeftScoreText		DB "00"
 LeftScoreStringLocX	EQU 45
-LeftScoreStringLocY	EQU 13
+LeftScoreStringLocY	EQU LeftScoreLocY+1
 
 RightScoreTextLength 	EQU 2
 RightScoreText			DB "00"
 RightScoreStringLocX	EQU 107
-RightScoreStringLocY	EQU 13
+RightScoreStringLocY	EQU RightScoreLocY+1
+
+FreezeStringLength		EQU 6
+FreezeStringColor		EQU 4
+FreezeString			DB	"Freeze"
+LeftFreezeLocX			EQU 45
+LeftFreezeLocY			EQU 13
+RightFreezeLocX			EQU 107
+RightFreezeLocY			EQU 13
+
+LeftFreezeTextLength 	EQU 2
+LeftFreezeText			DB "00"
+LeftFreezeStringLocX	EQU 45
+LeftFreezeStringLocY	EQU LeftFreezeLocY+1
+
+RightFreezeTextLength 	EQU 2
+RightFreezeText			DB "00"
+RightFreezeStringLocX	EQU 107
+RightFreezeStringLocY	EQU RightFreezeLocY+1
+
+SpeedUpStringLength		EQU 8
+SpeedUpString			DB	"Speed Up"
+LeftSpeedUpLocX			EQU 45
+LeftSpeedUpLocY			EQU 16
+RightSpeedUpLocX		EQU 107
+RightSpeedUpLocY		EQU 16
+
+LeftSpeedUpTextLength 	EQU 2
+LeftSpeedUpText			DB "00"
+LeftSpeedUpStringLocX	EQU 45
+LeftSpeedUpStringLocY	EQU LeftSpeedUpLocY+1
+
+RightSpeedUpTextLength 	EQU 2
+RightSpeedUpText		DB "00"
+RightSpeedUpStringLocX	EQU 107
+RightSpeedUpStringLocY	EQU RightSpeedUpLocY+1
+
+RemoveLinesStringLength		EQU 12
+RemoveLinesString			DB	"Remove Lines"
+LeftRemoveLinesLocX			EQU 45
+LeftRemoveLinesLocY			EQU 19
+RightRemoveLinesLocX		EQU 107
+RightRemoveLinesLocY		EQU 19
+
+LeftRemoveLinesTextLength 	EQU 2
+LeftRemoveLinesText			DB "00"
+LeftRemoveLinesStringLocX	EQU 45
+LeftRemoveLinesStringLocY	EQU LeftRemoveLinesLocY+1
+
+RightRemoveLinesTextLength 	EQU 2
+RightRemoveLinesText		DB "00"
+RightRemoveLinesStringLocX	EQU 107
+RightRemoveLinesStringLocY	EQU RightRemoveLinesLocY+1
+
+ChangePieceStringLength		EQU 12
+ChangePieceString			DB	"Change Piece"
+LeftChangePieceLocX			EQU 45
+LeftChangePieceLocY			EQU 22
+RightChangePieceLocX		EQU 107
+RightChangePieceLocY		EQU 22
+
+LeftChangePieceTextLength	EQU 2
+LeftChangePieceText			DB "00"
+LeftChangePieceStringLocX	EQU 45
+LeftChangePieceStringLocY	EQU LeftChangePieceLocY+1
+
+RightChangePieceTextLength 	EQU 2
+RightChangePieceText		DB "00"
+RightChangePieceStringLocX	EQU 107
+RightChangePieceStringLocY	EQU RightChangePieceLocY+1
+
 
 DeltaScore	EQU 1
 
@@ -89,6 +159,8 @@ EnterCode  DB 1CH
 F2Code     DB 3CH
 F10Code    DB 44H 
 
+PowerupEveryPoint			EQU 4
+
 ;CURRENT PIECE INFO
 leftPieceId					DB	?			;contains the ID of the current piece
 leftPieceOrientation		DB	?			;contains the current orientation of the piece
@@ -97,6 +169,11 @@ leftPieceLocY				DB	?			;the Ycoord of the top left corner
 leftPieceData				DB	16 DUP(?)	;contains the 4x4 matrix of the piece (after orientation)
 leftPieceSpeed				DB	1			;contains the falling speed of the left piece
 Player1Score				DB	0			;score of first player
+leftPowerup1Count			DB  0
+leftPowerup2Count			DB  0
+leftPowerup3Count			DB	0
+leftPowerup4Count			DB 	0
+leftPowerup5Count			DB 	0
 
 rightPieceId				DB	?			;contains the ID of the current piece
 rightPieceOrientation		DB	?			;contains the current orientation of the piece
@@ -105,6 +182,12 @@ rightPieceLocY				DB	?			;the Ycoord of the top left corner
 rightPieceData				DB	16 DUP(?)	;contains the 4x4 matrix of the piece (after orientation)
 rightPieceSpeed				DB	1			;contains the falling speed of the right piece
 Player2Score				DB	0			;score of second player
+rightPowerup1Count			DB 	0
+rightPowerup2Count			DB	0
+rightPowerup3Count			DB	0
+rightPowerup4Count			DB	0
+rightPowerup5Count			DB	0
+
 
 tempPieceOffset				DW	?			;contains the address of the current piece
 
@@ -1094,9 +1177,9 @@ COLLIDE:
 GenerateRandomPiece		ENDP
 
 ;---------------------------
-;Procedure to generate a random piece and set it's data in current screen data
+;Procedure to generate a random number
 ;@param		CL: Random Number % CL 
-;@return 	BL: Generated Piece ID 
+;@return 	BL: the random number
 GenerateRandomNumber	PROC 	NEAR
 						PUSH AX
 						PUSH DX
@@ -1278,6 +1361,7 @@ CHECKLINESKIPINC:
 				CMP SI, 0D
 				JNZ CHECKLINESIIS0			;if SI is 4, make it 0, if it's 0, make it 4
 				ADD Player1Score, DeltaScore		;increase score
+				CALL AddPowerupCheck
 				CALL UpdatePlayersScore
 
 				MOV SI, 4D
@@ -1285,6 +1369,7 @@ CHECKLINESKIPINC:
 CHECKLINESIIS0:
 				MOV SI, 0D
 				ADD Player2Score, DeltaScore		;increase score
+				CALL AddPowerupCheck
 				CALL UpdatePlayersScore
 CHECKLINESIIS4:
 				CALL InsertLine				;insert a line at the other player
@@ -1520,6 +1605,8 @@ ChangeScoreToText	ENDP
 ;@return			none
 DrawGUIText		PROC	NEAR
 				PUSHA
+
+				;render the left screen next piece text
 				mov ah, 13h
 				mov cx, NEXTPIECETEXTLENGTH
 				mov dh, LEFTNEXTPIECELOCY
@@ -1528,6 +1615,7 @@ DrawGUIText		PROC	NEAR
 				mov bx, 4d
 				int 10h
 
+				;render the right screen next piece text
 				mov ah, 13h
 				mov cx, NEXTPIECETEXTLENGTH
 				mov dh, RIGHTNEXTPIECELOCY
@@ -1536,6 +1624,7 @@ DrawGUIText		PROC	NEAR
 				mov bx, 4d
 				int 10h
 				
+				;render the left screen score text
 				mov ah, 13h
 				mov cx, SCORETEXTLENGTH
 				mov dh, LeftScoreLocY
@@ -1544,6 +1633,7 @@ DrawGUIText		PROC	NEAR
 				mov bx, 4d
 				int 10h
 				
+				;render the left screen score text
 				mov ah, 13h
 				mov cx, SCORETEXTLENGTH
 				mov dh, RightScoreLocY
@@ -1551,7 +1641,77 @@ DrawGUIText		PROC	NEAR
 				lea bp, SCORETEXT
 				mov bx, 4d
 				int 10h
-				CALL UpdatePlayersScore
+
+				CALL UpdatePlayersScore	;render the score itself
+
+				;render left powerups
+
+				mov ah, 13h
+				mov cx, FreezeStringLength
+				mov dh, LeftFreezeLocY
+				mov dl, LeftFreezeLocX
+				lea bp, FreezeString
+				mov bx, 4d
+				int 10h
+
+				mov ah, 13h
+				mov cx, SpeedUpStringLength
+				mov dh, LeftSpeedUpLocY
+				mov dl, LeftSpeedUpLocX
+				lea bp, SpeedUpString
+				mov bx, 4d
+				int 10h
+
+				mov ah, 13h
+				mov cx, RemoveLinesStringLength
+				mov dh, LeftRemoveLinesLocY
+				mov dl, LeftRemoveLinesLocX
+				lea bp, RemoveLinesString
+				mov bx, 4d
+				int 10h
+
+				mov ah, 13h
+				mov cx, ChangePieceStringLength
+				mov dh, LeftChangePieceLocY
+				mov dl, LeftChangePieceLocX
+				lea bp, ChangePieceString
+				mov bx, 4d
+				int 10h
+
+				;render right powerups
+
+				mov ah, 13h
+				mov cx, FreezeStringLength
+				mov dh, RightFreezeLocY
+				mov dl, RightFreezeLocX
+				lea bp, FreezeString
+				mov bx, 4d
+				int 10h
+
+				mov ah, 13h
+				mov cx, SpeedUpStringLength
+				mov dh, RightSpeedUpLocY
+				mov dl, RightSpeedUpLocX
+				lea bp, SpeedUpString
+				mov bx, 4d
+				int 10h
+
+				mov ah, 13h
+				mov cx, RemoveLinesStringLength
+				mov dh, RightRemoveLinesLocY
+				mov dl, RightRemoveLinesLocX
+				lea bp, RemoveLinesString
+				mov bx, 4d
+				int 10h
+
+				mov ah, 13h
+				mov cx, ChangePieceStringLength
+				mov dh, RightChangePieceLocY
+				mov dl, RightChangePieceLocX
+				lea bp, ChangePieceString
+				mov bx, 4d
+				int 10h
+
 				POPA
 				RET
 DrawGUIText		ENDP
@@ -1632,7 +1792,7 @@ DRAWPIECELOPX1:
 		DIV CL						;AH = id%4, AL = id/4
 		MOV CX, 0
 		MOV DX, 0
-		MOV CL, 13				;load selected piece X into CL
+		MOV CL, 12				;load selected piece X into CL
 		MOV DL, 2				;load selected piece Y into DL
 		ADD CL, AH					;CX = orig_x + id%4
 		ADD DL, AL					;DX = orig_y + id/4
@@ -1679,7 +1839,7 @@ LOPX1:
 		DIV CL						;AH = id%4, AL = id/4
 		MOV CX, 0
 		MOV DX, 0
-		MOV CL, 13				;load selected piece X into CL
+		MOV CL, 12				;load selected piece X into CL
 		MOV DL, 2				;load selected piece Y into DL
 		ADD CL, AH					;CX = orig_x + id%4
 		ADD DL, AL					;DX = orig_y + id/4
@@ -1697,5 +1857,36 @@ ISBLACK1:
 		POPA
 		RET
 DeleteNextPiece		ENDP
+;---------------------------
+;This procedure checks if a player should get a powerup now, if he should, then add a random powerup to him
+;@param				SI: 0 for player1, 4 for player2
+;@return			none
+AddPowerupCheck		PROC	NEAR
+					PUSHA
+					CMP SI, 0
+					JNZ PowerupSIis4
+					LEA DI, Player1Score	;load offset playerscore1 into bx
+					JMP PowerupBreak
+PowerupSIis4:
+					LEA DI, Player2Score	;load offset playerscore2 into bx
+PowerupBreak:
+					MOV AH, 0
+					MOV AL, [DI]
+					MOV CL, PowerupEveryPoint			;check if score is divisible by powerupPoints
+					DIV CL					;divide score by CL, check if it is divisible by it
+					CMP AH, 0
+					JNZ NoPowerUp
+					MOV BX, 0
+					MOV CL, 5				;number of powerups
+					CALL GenerateRandomNumber
+					;bl now has a random number from 0 to 3 inclusive
+					ADD DI, BX
+					INC DI					;moves DI to rand_number+1
+					MOV BL, 1
+					ADD [DI], BL			;increases the number of that powerup
+NoPowerUp:
+					POPA
+					RET
+AddPowerupCheck		ENDP
 ;---------------------------
 END     MAIN
