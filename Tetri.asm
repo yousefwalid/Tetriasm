@@ -116,6 +116,21 @@ collisionPieceLocY				DB	?			;the Ycoord of the top left corner
 collisionPieceData				DB	16 DUP(?)	;contains the 4x4 matrix of the piece (after orientation)
 collisionPieceSpeed				DB	1			;contains the falling speed of the left piece
 
+;NEXT PIECE INFO
+nextLeftPieceId					DB	?			;contains the ID of the current piece
+nextLeftPieceOrientation		DB	?			;contains the next orientation of the piece
+nextLeftPieceLocX				DB	?			;the Xcoord of the top left corner
+nextLeftPieceLocY				DB	?			;the Ycoord of the top left corner
+nextLeftPieceData				DB	16 DUP(?)	;contains the 4x4 matrix of the piece (after orientation)
+
+nextRightPieceId				DB	?			;contains the ID of the current piece
+nextRightPieceOrientation		DB	?			;contains the current orientation of the piece
+nextRightPieceLocX				DB	?			;the Xcoord of the top left corner
+nextRightPieceLocY				DB	?			;the Ycoord of the top left corner
+nextRightPieceData				DB	16 DUP(?)	;contains the 4x4 matrix of the piece (after orientation)
+
+tempNextPieceOffset				DW	?			;contains the address of the next piece
+
 ;PIECES DATA
 firstPiece 					DB 0,0,0,0,11,11,11,11,0,0,0,0,0,0,0,0	;Line shape
 firstPiece1					DB 0,11,0,0,0,11,0,0,0,11,0,0,0,11,0,0	;Line shape after one rotation
@@ -183,12 +198,17 @@ MAIN    PROC    FAR
 		CALL DrawGameScr
 		CALL DrawGUIText
 
-		MOV SI, 0
+		MOV SI,0
+		MOV BX,0
+		CALL GetTempNextPiece
+		CALL SetNextPieceData
 		CALL GenerateRandomPiece
 
 		MOV SI,4
+		MOV BX,0
+		CALL GetTempNextPiece
+		CALL SetNextPieceData
 		CALL GenerateRandomPiece
-		
 GAMELP:	
 		CALL ParseInput
 		CALL PieceGravity
@@ -394,12 +414,12 @@ LOOPY:
 	RET
 DrawBlockClr	ENDP
 ;---------------------------
-;This procedure sets the piece data for left or right screen according to tempPieceOffset
+;This procedure sets the next piece data for left or right screen according to tempNextPieceOffset
 ;@param			BX: Piece ID			
 ;@return		none
-SetScrPieceData	PROC	NEAR
+SetNextPieceData	PROC	NEAR
 		PUSHA
-		MOV DI,	tempPieceOffset
+		MOV DI,	tempNextPieceOffset
 		MOV SI, 0d			;initialize counter	
 		MOV [DI], BX		;move id of selected piece to selectedScreenPiece
 		MOV AH, 0
@@ -423,7 +443,7 @@ SETSCRPIECELOP:
 		JNZ SETSCRPIECELOP
 		POPA
 		RET
-SetScrPieceData	ENDP
+SetNextPieceData	ENDP
 ;---------------------------
 ;This procedure copies the piece address into tempPiece according to SI
 ;@param			SI: screenId: 0 for left, 4 for right
@@ -441,6 +461,23 @@ RIGHT:										;else if the screen is right
 EXT:	POP SI
 		RET
 GetTempPiece	ENDP
+;---------------------------
+;This procedure copies the next piece address into tempNextPiece according to SI
+;@param			SI: screenId: 0 for left, 4 for right
+;@return		none 
+GetTempNextPiece	PROC	NEAR
+		PUSH SI
+		CMP SI, 0					;If the screen is left
+		JNZ	RIGHT1
+		LEA SI, nextLeftPieceId			;copy the leftPieceOffset to SI
+		MOV tempNextPieceOffset, SI		;load the leftPieceOffset to tempPieceOffset
+		JMP EXT1
+RIGHT1:										;else if the screen is right
+		LEA SI, nextRightPieceId		;copy the rightPieceOffset to SI
+		MOV tempNextPieceOffset, SI		;load the rightPieceOffset to tempPieceOffset
+EXT1:	POP SI
+		RET
+GetTempNextPiece	ENDP
 ;---------------------------
 ;This procedure clears the current temp piece (used in changing direction or rotation)	;NEEDS TESTING
 ;@param			SI: screenId: 0 for left, 4 for right
@@ -1037,8 +1074,11 @@ GenerateRandomPiece		PROC 	NEAR
 						DIV CL
 						MOV BX,0
 						MOV BL,AH	;BL now contains the ID of the random piece
-						CALL GetTempPiece
-						CALL SetScrPieceData
+						CALL CopyNextPieceData
+						CALL GetTempNextPiece
+						CALL DeleteNextPiece
+						CALL SetNextPieceData
+						CALL DrawNextPiece
 						CALL setCollisionPiece
 						CALL CheckCollision
 						CMP AL,1
@@ -1543,4 +1583,119 @@ UpdatePlayersScore	PROC	NEAR
 					RET
 UpdatePlayersScore	ENDP
 ;---------------------------------------------------
+;This procedure copies data of the next piece to the current piece to draw it
+;@params		SI: 0 for left screen,4 for right screen
+;@returns 		NONE
+CopyNextPieceData	PROC	NEAR
+					PUSHA
+					
+					CALL GetTempNextPiece
+					MOV DI,tempNextPieceOffset
+
+					CALL GetTempPiece
+					MOV SI,tempPieceOffset
+					
+					MOV CX,20D
+					
+CPY:				MOV AL,[DI]
+					MOV [SI],AL
+					INC SI
+					INC DI
+					LOOP CPY
+					POPA
+					RET
+CopyNextPieceData	ENDP
+;---------------------------
+;This procedure draws the piece stored in temp piece
+;in it's corresponding Data,(X,Y)
+;@param			SI: screenId: 0 for left, 4 for right
+;@return		none
+DrawNextPiece		PROC	NEAR
+		PUSHA
+		MOV BX, tempNextPieceOffset
+		MOV DI, BX						;Load the piece 4x4 string address in pieceData
+		ADD DI,	4						;Go to the string data to put in DI
+		MOV CX, 0D						;iterate over the 16 cells of the piece
+		;if the piece has color !black, draw it with it's color
+		;cell location is:
+		;cell_x = orig_x + id%4
+		;cell_y = orig_y + id/4
+DRAWPIECELOPX1:			
+		MOV DL, [DI]					;copy the byte of color of current cell into DL
+		CMP DL, 0D						;check if color of current piece block is black
+		JZ	 DRAWPIECEISBLACK1
+		
+		PUSH CX
+		
+		MOV AX, CX
+		MOV CL, 4D
+		DIV CL						;AH = id%4, AL = id/4
+		MOV CX, 0
+		MOV DX, 0
+		MOV CL, 13				;load selected piece X into CL
+		MOV DL, 2				;load selected piece Y into DL
+		ADD CL, AH					;CX = orig_x + id%4
+		ADD DL, AL					;DX = orig_y + id/4
+		
+		MOV AL, [DI]
+
+		CALL DrawBlockClr
+		
+		POP  CX
+DRAWPIECEISBLACK1:		
+		INC DI
+		INC CX
+		CMP CX, 16D
+		JNZ DRAWPIECELOPX1
+
+
+		POPA
+		RET
+DrawNextPiece		ENDP
+;---------------------------
+;---------------------------
+;This procedure clears the current temp piece (used in changing direction or rotation)	;NEEDS TESTING
+;@param			SI: screenId: 0 for left, 4 for right
+;@return		none
+DeleteNextPiece		PROC	NEAR
+		PUSHA
+		MOV BX, tempNextPieceOffset
+		MOV DI, BX						;Load the piece 4x4 string address in pieceData
+		ADD DI,	4						;Go to the string data to put in DI
+		MOV CX, 0D						;iterate over the 16 cells of the piece
+		;if the piece has color !black, draw it with black
+		;cell location is:
+		;cell_x = orig_x + id%4
+		;cell_y = orig_y + id/4
+LOPX1:			
+		MOV DL, [DI]					;copy the byte of color of current cell into DL
+		CMP DL, 0D						;check if color of current piece block is black
+		JZ 	ISBLACK1
+		
+		PUSH CX
+		
+		MOV AX, CX
+		MOV CL, 4D
+		DIV CL						;AH = id%4, AL = id/4
+		MOV CX, 0
+		MOV DX, 0
+		MOV CL, 13				;load selected piece X into CL
+		MOV DL, 2				;load selected piece Y into DL
+		ADD CL, AH					;CX = orig_x + id%4
+		ADD DL, AL					;DX = orig_y + id/4
+		
+		MOV AL, 0
+
+		CALL DrawBlockClr
+		
+		POP  CX
+ISBLACK1:		
+		INC CX
+		INC DI
+		CMP CX, 16D
+		JNZ LOPX1
+		POPA
+		RET
+DeleteNextPiece		ENDP
+;---------------------------
 END     MAIN
