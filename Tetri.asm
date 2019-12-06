@@ -969,10 +969,21 @@ LeftPowerup1:
 		CMP AH, leftPower1
 		JNZ LeftPowerup2
 
+		MOV SI, 0
+		CALL FreezeRotation
+		SUB leftPowerupFreezeCount, 1
+		CALL UpdatePowerupsScore
+
+
 		JMP BreakParseInput
 LeftPowerup2:
 		CMP AH, leftPower2
 		JNZ LeftPowerup3
+
+		MOV SI, 0
+		CALL SpeedUpOpponentPiece
+		SUB leftPowerupSpeedUpCount, 1
+		CALL UpdatePowerupsScore
 
 		JMP BreakParseInput
 LeftPowerup3:
@@ -1000,10 +1011,20 @@ RightPowerup1:
 		CMP AH, RightPower1
 		JNZ RightPowerup2
 
+		MOV SI, 4
+		CALL FreezeRotation
+		SUB leftPowerupFreezeCount, 1
+		CALL UpdatePowerupsScore
+
 		JMP BreakParseInput
 RightPowerup2:
 		CMP AH, RightPower2
 		JNZ RightPowerup3
+
+		MOV SI, 4
+		CALL SpeedUpOpponentPiece
+		SUB rightPowerupSpeedUpCount, 1
+		CALL UpdatePowerupsScore
 
 		JMP BreakParseInput
 RightPowerup3:
@@ -2145,12 +2166,12 @@ SpeedUpOpponentPiece		PROC	NEAR
 		JZ SpeedUpLeftPlayer	;increase left player piece speed
 
 	SpeedUpRightPlayer:
-		ADD rightPieceSpeed	,5
+		MOV rightPieceSpeed, 2
 		POPA
 		RET	
 
 	SpeedUpLeftPlayer:
-		INC leftPieceSpeed
+		MOV leftPieceSpeed, 2
 		POPA
 		RET
 
