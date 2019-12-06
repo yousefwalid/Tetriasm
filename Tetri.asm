@@ -2127,9 +2127,14 @@ RemoveFourLines		PROC	NEAR
 		MOV DX, FRAMEHEIGHT			
 		DEC DX
 
+		CALL GetTempPiece
+		CALL DeletePiece
+
 RemoveFourLinesLoop: 
-		CALL RemoveLine												;go to next line
+		CALL ShiftLinesDown												;go to next line
 		LOOP RemoveFourLinesLoop
+		
+		; CALL DrawPiece
 
 		POPA
 		RET
