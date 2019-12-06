@@ -174,6 +174,7 @@ leftPowerup2Count			DB  0
 leftPowerup3Count			DB	0
 leftPowerup4Count			DB 	0
 leftPowerup5Count			DB 	0
+leftPieceRotationLock 		DB 0 	;lock the rotation of the piece 0:locked 1:free
 
 rightPieceId				DB	?			;contains the ID of the current piece
 rightPieceOrientation		DB	?			;contains the current orientation of the piece
@@ -187,6 +188,7 @@ rightPowerup2Count			DB	0
 rightPowerup3Count			DB	0
 rightPowerup4Count			DB	0
 rightPowerup5Count			DB	0
+rightPieceRotationLock	DB 0	;lock the rotation of the piece 0:locked 1:free
 
 
 tempPieceOffset				DW	?			;contains the address of the current piece
@@ -293,8 +295,10 @@ MAIN    PROC    FAR
 		CALL SetNextPieceData
 		CALL GenerateRandomPiece
 
-		MOV SI,4
-		CALL SpeedUpOpponentPiece
+		; MOV SI,4
+		; CALL FreezeRotation
+		; CALL SpeedUpOpponentPiece
+
 GAMELP:	
 		CALL ParseInput
 		CALL PieceGravity
@@ -861,12 +865,15 @@ LeftRotKey:
 		CMP AH, leftRotCode
 		JNZ LeftLeftKey
 
+		CMP leftPieceRotationLock,1 ;check if the rotation is locked
+		JZ LeftRotKeyParsed
+
 		MOV SI, 0
 		CALL GetTempPiece
 
 		MOV SI,0
 		CALL RotatePiece
-
+LeftRotKeyParsed:
 		JMP BreakParseInput
 LeftLeftKey:
 		CMP AH, leftLeftCode
@@ -905,6 +912,10 @@ LeftRightKey:
 RightRotKey:
 		CMP AH, rightRotCode
 		JNZ RightLeftKey
+
+		CMP rightPieceRotationLock,1 ;check if the rotation is locked
+		JZ BreakParseInput
+
 		MOV SI, 4
 		CALL GetTempPiece
 
@@ -974,13 +985,8 @@ MOVELEFT:
 		JMP CHECK2
 COLL1:	
 		MOV SI,0
-		
-		MOV CL, [DI]		;get the speed of the piece
-		CMP CL, 1			;check if it's unchanged
-		JZ SpeedUnchanged1
+		CALL UnfreezeRotation
 		CALL ResetPieceSpeed	;if changed reset it to its original
-
-SpeedUnchanged1:			
 		CALL CheckLineClear		;check if a line has been cleared
 		CALL GenerateRandomPiece
 		
@@ -999,16 +1005,10 @@ MOVERIGHT:
 		JMP NO_CHANGE
 COLL2:	
 		MOV SI,4
-
-		MOV CL, [DI]		;get the speed of the piece
-		CMP CL, 1			;check if it's unchanged
-		JZ SpeedUnchanged2
+		CALL UnfreezeRotation
 		CALL ResetPieceSpeed	;if chnaged reset it to its original speed
-
-	SpeedUnchanged2:
 		CALL CheckLineClear		;check if a line has been cleared
 		CALL GenerateRandomPiece
-
 NO_CHANGE:	
 		POPA
 		RET
@@ -1951,7 +1951,7 @@ SpeedUpOpponentPiece		PROC	NEAR
 
 SpeedUpOpponentPiece		ENDP
 ;---------------------------
-;This procedure reser the speed of the piece  to its original speed
+;This procedure reset the speed of the piece  to its original speed
 ;@param			SI: screenId 0 for left, 4 for right
 ;@return		none
 ResetPieceSpeed		PROC	NEAR
@@ -1961,18 +1961,71 @@ ResetPieceSpeed		PROC	NEAR
 		JZ ResetRightSpeed	
 
 	ResetLeftSpeed:
+		MOV CL, leftPieceSpeed
+		CMP CL,1
+		JZ BreakResetPieceSpeed
 		MOV leftPieceSpeed, 1	;set the piece speed to  1
-		POPA
-		RET
+		JMP BreakResetPieceSpeed
 
 	ResetRightSpeed:
-		MOV rightPieceSpeed, 1 ;set the piece speed to  1
-		POPA
-		RET
+		MOV CL, rightPieceSpeed
+		CMP CL,1
+		JZ BreakResetPieceSpeed
+		MOV rightPieceSpeed, 1	;set the piece speed to  1
 
+	BreakResetPieceSpeed:
 		POPA
 		RET
 
 ResetPieceSpeed		ENDP
+;---------------------------
+;This procedure freeze the rotation for the opponent
+;@param			SI: screenId of the calling player 0: will affect the right screen 4: will affect the left screen
+;@return		none
+FreezeRotation		PROC	NEAR
+		PUSHA
+		
+		CMP SI, 4						;if it is called by right screen freeze left piece
+		JZ FreezeRotationLeftPiece	
+
+	FreezeRotationRightPiece:
+		MOV rightPieceRotationLock, 1 ;set the piece speed to  1
+		POPA
+		RET
+
+	FreezeRotationLeftPiece:
+		MOV leftPieceRotationLock, 1	;set the piece speed to  1
+		POPA
+		RET
+
+FreezeRotation		ENDP
+;---------------------------
+;This procedure unfreeze the rotation for specific screen 
+;@param			SI: screenId 0: left 4: right
+;@return		none
+UnfreezeRotation		PROC	NEAR
+		PUSHA
+		
+		CMP SI, 4						;if it is called by right screen freeze left piece
+		JZ UnfreezeRightScreen	
+
+	UnfreezeLeftScreen:
+		MOV CL, leftPieceRotationLock	;get the lock variable
+		CMP CL, 0															
+		JZ BreakUnfreezeRotation			
+		MOV leftPieceRotationLock, 0	;reset lock variable to 0 if it wasn't
+		JMP BreakUnfreezeRotation
+
+	UnfreezeRightScreen:
+		MOV CL, rightPieceRotationLock	;get the lock variable
+		CMP CL, 0															
+		JZ BreakUnfreezeRotation			
+		MOV rightPieceRotationLock, 0	;reset lock variable to 0 if it wasn't
+		
+	BreakUnfreezeRotation:
+		POPA
+		RET
+
+UnfreezeRotation		ENDP
 ;---------------------------
 END     MAIN
