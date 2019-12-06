@@ -28,14 +28,19 @@ RIGHTNEXTPIECELOCY	EQU 3
 SCORETEXTLENGTH		EQU 5
 SCORETEXT			DB	"Score"
 LeftScoreLocX		EQU 45
-LeftScoreLocY		EQU 10
+LeftScoreLocY		EQU 12
 RightScoreLocX		EQU 107
-RightScoreLocY		EQU 10
+RightScoreLocY		EQU 12
+RightPlyLocX		EQU 107
+RightPlyLocY		EQU 10
+LeftPlyLocX			EQU 45
+LeftPlyLocY			EQU 10
 
 LeftScoreTextLength EQU 2
 LeftScoreText		DB "00"
 LeftScoreStringLocX	EQU 45
 LeftScoreStringLocY	EQU 13
+
 
 RightScoreTextLength 	EQU 2
 RightScoreText			DB "00"
@@ -52,21 +57,36 @@ GAMERIGHTSCRY       DW  30      ;top left corner Y of right screen
 
 
 ;===========================================================================
- Menu11 DB "Please enter your name:"
- Menu12 DB "Press Enter Key to Continue"
- Menu21 DB ", Press F2 to play"
- Menu22 DB ", Press F10 to play" 
- Ready  DB 'R'
- RPly1  DB  0
- RPly2  DB  0
- Separatedline DB  80 DUP ('=')
- SPACE DB ' '
- NAME1 DB 15
-		DB ?
-Player1		DB 10 DUP(' ')
- NAME2 DB 15
-		DB ?
+LogoWidth EQU 320D
+LogoHeight EQU 200D
+
+Logofilename DB 'Logo.bin', 0
+
+LogoFilehandle DW ?
+
+chickenData DB LogoWidth * LogoHeight dup(00)
+
+
+Menu11 DB "Please enter your name:"
+M11sz	EQU 23
+Menu12 DB "Press Enter Key to Continue"
+M12sz	EQU 27
+Menu21 DB ", Press F2 to play"
+M21sz	EQU 18
+Menu22 DB ", Press F10 to play"
+M22sz	EQU 19 
+Ready  DB 'R'
+RPly1  DB  0
+RPly2  DB  0
+Separatedline DB  80 DUP ('=')
+PACE DB ' '
+NAME1 DB 15
+Ply1Sz		DB ?
+Player1	DB 10 DUP(' ')
+NAME2 		DB 15
+Ply2Sz			DB ?
 Player2		DB 10 DUP(' ')
+NameSz		EQU 6
 ;===========================================================================
 
 
@@ -183,7 +203,7 @@ MAIN    PROC    FAR
 		MOV AL, 13H ; Mode 13h
 		INT 10H 
  
-		;CALL DisplayMenu 
+		CALL DisplayMenu 
 ;-----------------------------------------------
 
 		;MOV AH, 00H       ;PREPARE GFX MODE
@@ -1298,191 +1318,181 @@ CHECKLINESKIPRMV:
 				RET
 CheckLineClear	ENDP
 ;---------------------------
+;Procedure to wait for a key to be pressed
+;@param			none
+;@				AL(ascii-code)  AH(scancode)
+Wait4Key		PROC 	NEAR
+				MOV AH,00H 
+				INT 16H
+				RET
+Wait4Key		ENDP
+;---------------------------
+;Procedure to get message from user at cursor position
+;@param			none
+;@				none
+GetMessage		PROC 	NEAR
+				MOV AH,0AH 
+				INT 21H
+				RET
+GetMessage		ENDP
+;---------------------------
+;Procedure to set cursor position 
+;@param			DH (Y)  DL(X)
+;@				none
+MoveCursor		PROC 	NEAR
+				MOV AH,02H          ;Move Cursor
+				XOR BH,BH
+				INT 10H
+				RET
+MoveCursor		ENDP
+;---------------------------
+;Procedure to show char at cursor position  
+;@param			AL(ascii-code) BL(col)
+;@				none
+PrintChar		PROC 	NEAR
+				MOV AH, 09H									
+				XOR BH,BH ; VIDEO PAGE = 0 
+				MOV CX, 1
+				INT 10H
+				RET
+PrintChar		ENDP
+;---------------------------
+;Procedure to show message  
+;@param			BP (offset of string) CX(size)
+;				DH (Y)  DL(X)
+;@				none
+PrintMessage	PROC 	NEAR
+				MOV AH, 13H ; WRITE THE STRING
+				MOV AL, 01H; ATTRIBUTE IN BL, MOVE CURSOR TO THAT POSITION
+				MOV BL, 15 ;WHITE
+				XOR BH,BH ; VIDEO PAGE = 0
+				INT 10H
+				RET
+PrintMessage	ENDP
+;---------------------------
 ;Procedure to show menu on opening the game 
-;@param			CX:Added number to go the correct piece
-;@				ZF:if 0 then collided ,1 clear to rotate
-DisplayMenu 		PROC     NEAR
-MOV BP, OFFSET Menu11 ; ES: BP POINTS TO THE TEXT
-MOV CX,23 ;SIZE OF STRING
-MOV DH, 6 ;ROW TO PLACE STRING
-MOV DL, 10 ; COLUMN TO PLACE STRING
-;CALL PRINTMESSAGE
-MOV AH, 13H ; WRITE THE STRING
-MOV AL, 01H; ATTRIBUTE IN BL, MOVE CURSOR TO THAT POSITION
-MOV BL, 15 ;WHITE
-XOR BH,BH ; VIDEO PAGE = 0
-INT 10H
+;@param			none
+;@				none
+DisplayMenu 	PROC     NEAR
+				MOV BP, OFFSET Menu11 ; ES: BP POINTS TO THE TEXT
+				MOV CX,M11sz ;SIZE OF STRING
+				MOV DH, 6 ;ROW TO PLACE STRING
+				MOV DL, 10 ; COLUMN TO PLACE STRING
+				CALL PrintMessage
 
-MOV DH, 11 ;ROW TO PLACE CURSOR
-MOV DL, 10 ; COLUMN TO PLACE CURSOR
-;CALL MOVECURSOR
-mov AH,2          ;Move Cursor
-INT 10H
-
-MOV DX,OFFSET NAME1
-;CALL GETMESSAGE
-MOV AH,0AH 
-INT 21H
-
-MOV BP, OFFSET Menu12 ; ES: BP POINTS TO THE TEXT
-MOV CX, 27 ; LENGTH OF THE STRING
-MOV DH, 14 ;ROW TO PLACE STRING
-MOV DL, 10 ; COLUMN TO PLACE STRING
-;CALL PRINTMESSAGE
-MOV AH, 13H ; WRITE THE STRING
-MOV AL, 01H; ATTRIBUTE IN BL, MOVE CURSOR TO THAT POSITION
-MOV BL, 15 ;WHITE
-XOR BH,BH ; VIDEO PAGE = 0
-INT 10H
-
-WAIT4Enter: ;CALL WAIT4KEY
-			mov ah,0
-			int 16h 
-			CMP AH,	EnterCode
-			JNE WAIT4Enter
-			
-;Call ClearScreen
-MOV AH, 00H ; Set video mode
-MOV AL, 13H ; Mode 13h
-INT 10H 
-
-MOV BP, OFFSET Menu11 ; ES: BP POINTS TO THE TEXT
-MOV CX,23 ;SIZE OF STRING
-MOV DH, 6 ;ROW TO PLACE STRING
-MOV DL, 10 ; COLUMN TO PLACE STRING
-MOV AH, 13H ; WRITE THE STRING
-MOV AL, 01H; ATTRIBUTE IN BL, MOVE CURSOR TO THAT POSITION
-MOV BL, 15 ;WHITE
-XOR BH,BH ; VIDEO PAGE = 0
-INT 10H
-
-MOV DH, 11 ;ROW TO PLACE CURSOR
-MOV DL, 10 ; COLUMN TO PLACE CURSOR
-;CALL MOVECURSOR
-mov AH,2          ;Move Cursor
-INT 10H
-
-MOV DX,OFFSET NAME2
-;CALL GETMESSAGE
-MOV AH,0AH 
-INT 21H
-
-MOV BP, OFFSET Menu12 ; ES: BP POINTS TO THE TEXT
-MOV CX, 27 ; LENGTH OF THE STRING
-MOV DH, 14 ;ROW TO PLACE STRING
-MOV DL, 10 ; COLUMN TO PLACE STRING
-MOV AH, 13H ; WRITE THE STRING
-MOV AL, 01H; ATTRIBUTE IN BL, MOVE CURSOR TO THAT POSITION
-MOV BL, 15 ;WHITE
-XOR BH,BH ; VIDEO PAGE = 0
-INT 10H
-			
-WAIT4Enter2: ;CALL WAIT4KEY
-			mov ah,0
-			int 16h 
-			CMP AH,	EnterCode
-			JNE WAIT4Enter2
-			
-;CALL DisplayMenu2
-			
-;Call ClearScreen
-MOV AH, 00H ; Set video mode
-MOV AL, 13H ; Mode 13h
-INT 10H
-
-MOV BP, OFFSET Name1 + 2; ES: BP POINTS TO THE TEXT
-;INC BP  ;FOR IP text only
-MOV CX,10 ;SIZE OF STRING    ;FOR IP text only
-;INC BP  ;FOR IP text only
-MOV DH, 6 ;ROW TO PLACE STRING
-MOV DL, 6 ; COLUMN TO PLACE STRING
-;CALL PRINTMESSAGE
-MOV AH, 13H ; WRITE THE STRING
-MOV AL, 01H; ATTRIBUTE IN BL, MOVE CURSOR TO THAT POSITION
-MOV BL, 15 ;WHITE
-XOR BH,BH ; VIDEO PAGE = 0
-INT 10H
-	
-MOV BP, OFFSET Menu21 ; ES: BP POINTS TO THE TEXT
-MOV CX,18 ;SIZE OF STRING
-MOV DH, 6 ;ROW TO PLACE STRING
-MOV DL, 12 ; COLUMN TO PLACE STRING
-;CALL PRINTMESSAGE
-MOV AH, 13H ; WRITE THE STRING
-MOV AL, 01H; ATTRIBUTE IN BL, MOVE CURSOR TO THAT POSITION
-MOV BL, 15 ;WHITE
-XOR BH,BH ; VIDEO PAGE = 0
-INT 10H
+				MOV DH, 11 ;ROW TO PLACE CURSOR
+				MOV DL, 10 ; COLUMN TO PLACE CURSOR
+				CALL MoveCursor
 
 
-MOV BP, OFFSET Name2 + 2 ; ES: BP POINTS TO THE TEXT
-;INC BP  ;FOR IP text only
-MOV CX, 10 ;[BP] ;SIZE OF STRING    ;FOR IP text only
-;INC BP  ;FOR IP text only
-MOV DH, 10 ;ROW TO PLACE STRING
-MOV DL, 6 ; COLUMN TO PLACE STRING
-;CALL PRINTMESSAGE
-MOV AH, 13H ; WRITE THE STRING
-MOV AL, 01H; ATTRIBUTE IN BL, MOVE CURSOR TO THAT POSITION
-MOV BL, 15 ;WHITE
-XOR BH,BH ; VIDEO PAGE = 0
-INT 10H
-	
-MOV BP, OFFSET Menu22 ; ES: BP POINTS TO THE TEXT
-MOV CX,19 ;SIZE OF STRING
-MOV DH, 10 ;ROW TO PLACE STRING
-MOV DL, 12 ; COLUMN TO PLACE STRING
-;CALL PRINTMESSAGE
-MOV AH, 13H ; WRITE THE STRING
-MOV AL, 01H; ATTRIBUTE IN BL, MOVE CURSOR TO THAT POSITION
-MOV BL, 15 ;WHITE
-XOR BH,BH ; VIDEO PAGE = 0
-INT 10H
+				MOV DX,OFFSET NAME1
+				CALL GetMessage
 
-;CALL Wait4Key
-Wait4Ready: ;CALL WAIT4KEY
-			MOV AH,0
-			INT 16H
-			CMP AH,	F2Code
-			JE F2Pressed
-			CMP AH, F10Code
-			JNE WAIT4Ready
-			INC AH
-			MOV RPly2,AH
-    MOV DH, 11 ;ROW TO PLACE STRING
-    MOV DL, 6 ; COLUMN TO PLACE STRING
-;CALL SetCursorPos
-    MOV AH,02H  ; CURSOR POS SET 
-    XOR BH,BH ; VIDEO PAGE = 0
-    INT 10H ;Set Cursor Pos
-    MOV AH, 09H
-    MOV AL, 'R'; ATTRIBUTE IN BL, MOVE CURSOR TO THAT POSITION 
-    MOV BL, 15 ;WHITE
-    XOR BH,BH ; VIDEO PAGE = 0 
-    MOV CX, 1
-    INT 10H		
-			JMP CheckR
-F2Pressed:  INC AH
-			MOV RPly1,AH
-    MOV DH, 7 ;ROW TO PLACE STRING
-    MOV DL, 6 ; COLUMN TO PLACE STRING
-;CALL SetCursorPos
-    MOV AH,02H  ; CURSOR POS SET 
-    XOR BH,BH ; VIDEO PAGE = 0
-    INT 10H ;Set Cursor Pos
-    MOV AH, 09H
-    MOV AL, 'R'; ATTRIBUTE IN BL, MOVE CURSOR TO THAT POSITION 
-    MOV BL, 15 ;WHITE
-    XOR BH,BH ; VIDEO PAGE = 0 
-    MOV CX, 1
-    INT 10H
 
-CheckR:     CMP AH,5H
-			MOV AH, RPly1
-			AND AH, RPly2
-			JZ  Wait4Ready
-			
-DisplayMenu      ENDP
+				MOV BP, OFFSET Menu12 ; ES: BP POINTS TO THE TEXT
+				MOV CX, M12sz ; LENGTH OF THE STRING
+				MOV DH, 14 ;ROW TO PLACE STRING
+				MOV DL, 10 ; COLUMN TO PLACE STRING
+				CALL PrintMessage
+
+				WAIT4Enter: CALL Wait4Key			
+							CMP AH,	EnterCode
+							JNE WAIT4Enter
+							
+				;Call ClearScreen
+				MOV AH, 00H ; Set video mode
+				MOV AL, 13H ; Mode 13h
+				INT 10H 
+
+				MOV BP, OFFSET Menu11 ; ES: BP POINTS TO THE TEXT
+				MOV CX,M11sz ;SIZE OF STRING
+				MOV DH, 6 ;ROW TO PLACE STRING
+				MOV DL, 10 ; COLUMN TO PLACE STRING
+				CALL PrintMessage
+
+				MOV DH, 11 ;ROW TO PLACE CURSOR
+				MOV DL, 10 ; COLUMN TO PLACE CURSOR
+				CALL MoveCursor
+
+
+				MOV DX,OFFSET NAME2
+				CALL GetMessage
+
+
+				MOV BP, OFFSET Menu12 ; ES: BP POINTS TO THE TEXT
+				MOV CX, M12sz ; LENGTH OF THE STRING
+				MOV DH, 14 ;ROW TO PLACE STRING
+				MOV DL, 10 ; COLUMN TO PLACE STRING
+				CALL PrintMessage
+							
+				WAIT4Enter2: CALL Wait4Key
+							 CMP AH,	EnterCode
+							 JNE WAIT4Enter2
+							
+							
+							
+				;Call ClearScreen
+				MOV AH, 00H ; Set video mode
+				MOV AL, 13H ; Mode 13h
+				INT 10H
+
+				MOV BP, OFFSET Player1 ; ES: BP POINTS TO THE TEXT
+				MOV CX, NameSz
+				MOV DH, 6 ;ROW TO PLACE STRING
+				MOV DL, 6 ; COLUMN TO PLACE STRING
+				CALL PrintMessage
+					
+				MOV BP, OFFSET Menu21 ; ES: BP POINTS TO THE TEXT
+				MOV CX, M21sz ;SIZE OF STRING
+				MOV DH, 6 ;ROW TO PLACE STRING
+				MOV DL, 12 ; COLUMN TO PLACE STRING
+				CALL PrintMessage
+
+				MOV BP, OFFSET Player2 ; ES: BP POINTS TO THE TEXT
+				MOV CX, NameSz
+				MOV DH, 10 ;ROW TO PLACE STRING
+				MOV DL, 6 ; COLUMN TO PLACE STRING
+				CALL PrintMessage
+					
+				MOV BP, OFFSET Menu22 ; ES: BP POINTS TO THE TEXT
+				MOV CX, M22sz ;SIZE OF STRING
+				MOV DH, 10 ;ROW TO PLACE STRING
+				MOV DL, 12 ; COLUMN TO PLACE STRING
+				CALL PrintMessage
+
+				Wait4Ready: CALL Wait4Key
+							CMP AH,	F2Code
+							JE F2Pressed
+							CMP AH, F10Code
+							JNE WAIT4Ready
+							INC AH
+							MOV RPly2,AH
+					MOV DH, 11 ;ROW TO PLACE STRING
+					MOV DL, 6 ; COLUMN TO PLACE STRING
+					CALL MoveCursor
+
+					MOV AL, Ready; ATTRIBUTE IN BL, MOVE CURSOR TO THAT POSITION 
+					MOV BL, 15 ;WHITE
+					CALL PrintChar
+					
+					JMP CheckR
+					
+		F2Pressed:  INC AH
+					MOV RPly1,AH
+					MOV DH, 7 ;ROW TO PLACE STRING
+					MOV DL, 6 ; COLUMN TO PLACE STRING
+					CALL MoveCursor
+
+					MOV AL, Ready; ATTRIBUTE IN BL, MOVE CURSOR TO THAT POSITION 
+					MOV BL, 15 ;WHITE
+					CALL PrintChar
+					
+		CheckR:     CMP AH,5H ;Dummy number to check if ready
+					MOV AH, RPly1
+					AND AH, RPly2
+					JZ  Wait4Ready
+					RET		
+DisplayMenu      	ENDP
 ;---------------------------------------------------
 ;Parses score number into text to be displayed on the screen
 ;Params		NONE
@@ -1541,6 +1551,22 @@ DrawGUIText		PROC	NEAR
 				mov dh, LeftScoreLocY
 				mov dl, LeftScoreLocX
 				lea bp, SCORETEXT
+				mov bx, 4d
+				int 10h
+				
+				mov ah, 13h
+				mov cx, NameSz
+				mov dh, LeftPlyLocY
+				mov dl, LeftPlyLocX
+				lea bp, Player1
+				mov bx, 4d
+				int 10h
+				
+				mov ah, 13h
+				mov cx, NameSz
+				mov dh, RightPlyLocY
+				mov dl, RightPlyLocX
+				lea bp, Player2
 				mov bx, 4d
 				int 10h
 				
