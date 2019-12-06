@@ -292,6 +292,9 @@ MAIN    PROC    FAR
 		CALL GetTempNextPiece
 		CALL SetNextPieceData
 		CALL GenerateRandomPiece
+
+		MOV SI,4
+		CALL SpeedUpOpponentPiece
 GAMELP:	
 		CALL ParseInput
 		CALL PieceGravity
@@ -969,7 +972,15 @@ MOVELEFT:
 		JZ COLL1
 		LOOP MOVELEFT
 		JMP CHECK2
-COLL1:	MOV SI,0
+COLL1:	
+		MOV SI,0
+		
+		MOV CL, [DI]		;get the speed of the piece
+		CMP CL, 1			;check if it's unchanged
+		JZ SpeedUnchanged1
+		CALL ResetPieceSpeed	;if changed reset it to its original
+
+SpeedUnchanged1:			
 		CALL CheckLineClear		;check if a line has been cleared
 		CALL GenerateRandomPiece
 		
@@ -986,9 +997,18 @@ MOVERIGHT:
 		JZ	COLL2
 		LOOP MOVERIGHT
 		JMP NO_CHANGE
-COLL2:	MOV SI,4
+COLL2:	
+		MOV SI,4
+
+		MOV CL, [DI]		;get the speed of the piece
+		CMP CL, 1			;check if it's unchanged
+		JZ SpeedUnchanged2
+		CALL ResetPieceSpeed	;if chnaged reset it to its original speed
+
+	SpeedUnchanged2:
 		CALL CheckLineClear		;check if a line has been cleared
 		CALL GenerateRandomPiece
+
 NO_CHANGE:	
 		POPA
 		RET
@@ -1888,5 +1908,71 @@ NoPowerUp:
 					POPA
 					RET
 AddPowerupCheck		ENDP
+;---------------------------
+;This procedure removes four lines from a given screen
+;@param			SI: screenId: 0 for left, 4 for right
+;@return		none
+RemoveFourLines		PROC	NEAR
+		PUSHA
+		
+		MOV CX,4									;number of lines to be removed
+		
+		;get the last row in the grid
+		MOV DX, FRAMEHEIGHT			
+		DEC DX
+
+RemoveFourLinesLoop: 
+		CALL RemoveLine			
+		DEC DX										;go to next line
+		LOOP RemoveFourLinesLoop
+
+		POPA
+		RET
+RemoveFourLines		ENDP
+;---------------------------
+;This procedure speeds up the block speed at the opponent
+;@param			SI: screenId of the calling player: 0 will affect the right screen, 4 will affect the left screen
+;@return		none
+SpeedUpOpponentPiece		PROC	NEAR
+		PUSHA
+		
+		CMP SI, 4							;if it is called by the right player
+		JZ SpeedUpLeftPlayer	;increase left player piece speed
+
+	SpeedUpRightPlayer:
+		ADD rightPieceSpeed	,5
+		POPA
+		RET	
+
+	SpeedUpLeftPlayer:
+		INC leftPieceSpeed
+		POPA
+		RET
+
+SpeedUpOpponentPiece		ENDP
+;---------------------------
+;This procedure reser the speed of the piece  to its original speed
+;@param			SI: screenId 0 for left, 4 for right
+;@return		none
+ResetPieceSpeed		PROC	NEAR
+		PUSHA
+		
+		CMP SI, 4						;check which screen to reset its piece speed
+		JZ ResetRightSpeed	
+
+	ResetLeftSpeed:
+		MOV leftPieceSpeed, 1	;set the piece speed to  1
+		POPA
+		RET
+
+	ResetRightSpeed:
+		MOV rightPieceSpeed, 1 ;set the piece speed to  1
+		POPA
+		RET
+
+		POPA
+		RET
+
+ResetPieceSpeed		ENDP
 ;---------------------------
 END     MAIN
