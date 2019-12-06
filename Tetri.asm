@@ -169,11 +169,11 @@ leftPieceLocY				DB	?			;the Ycoord of the top left corner
 leftPieceData				DB	16 DUP(?)	;contains the 4x4 matrix of the piece (after orientation)
 leftPieceSpeed				DB	1			;contains the falling speed of the left piece
 Player1Score				DB	0			;score of first player
-leftPowerup1Count			DB  0
-leftPowerup2Count			DB  0
-leftPowerup3Count			DB	0
-leftPowerup4Count			DB 	0
-leftPowerup5Count			DB 	0
+leftPowerupFreezeCount					DB  0
+leftPowerupSpeedUpCount					DB  0
+leftPowerupRemoveLinesCount				DB	0
+leftPowerupChangePieceCount				DB 	0
+leftPowerup5Count						DB 	0	
 
 rightPieceId				DB	?			;contains the ID of the current piece
 rightPieceOrientation		DB	?			;contains the current orientation of the piece
@@ -181,16 +181,14 @@ rightPieceLocX				DB	?			;the Xcoord of the top left corner
 rightPieceLocY				DB	?			;the Ycoord of the top left corner
 rightPieceData				DB	16 DUP(?)	;contains the 4x4 matrix of the piece (after orientation)
 rightPieceSpeed				DB	1			;contains the falling speed of the right piece
-Player2Score				DB	0			;score of second player
-rightPowerup1Count			DB 	0
-rightPowerup2Count			DB	0
-rightPowerup3Count			DB	0
-rightPowerup4Count			DB	0
-rightPowerup5Count			DB	0
-
+Player2Score				DB	0
+rightPowerupFreezeCount					DB 	0
+rightPowerupSpeedUpCount				DB	0
+rightPowerupRemoveLinesCount			DB	0
+rightPowerupChangePieceCount			DB	0
+rightPowerup5Count						DB	0
 
 tempPieceOffset				DW	?			;contains the address of the current piece
-
 
 collisionPieceId				DB	?			;contains the ID of the current piece
 collisionPieceOrientation		DB	?			;contains the current orientation of the piece
@@ -1178,20 +1176,22 @@ GenerateRandomPiece		ENDP
 
 ;---------------------------
 ;Procedure to generate a random number
-;@param		CL: Random Number % CL 
+;@param		BL: Random Number % AL 
 ;@return 	BL: the random number
 GenerateRandomNumber	PROC 	NEAR
 						PUSH AX
 						PUSH DX
+						PUSH CX
 						
 						MOV AH,2CH
 						INT 21H		;Returns seconds in DH
 						MOV AX,0
 						MOV AL,DH	;AL=Seconds
-						DIV CL
+						DIV BL
 						MOV BX,0
 						MOV BL,AH	;BL now contains the ID of the random piece
 						
+						POP CX
 						POP DX
 						POP AX
 						
@@ -1367,10 +1367,10 @@ CHECKLINESKIPINC:
 				MOV SI, 4D
 				JMP CHECKLINESIIS4
 CHECKLINESIIS0:
-				MOV SI, 0D
 				ADD Player2Score, DeltaScore		;increase score
 				CALL AddPowerupCheck
 				CALL UpdatePlayersScore
+				MOV SI, 0D
 CHECKLINESIIS4:
 				CALL InsertLine				;insert a line at the other player
 				MOV SI, AX					;reset the SI value back
@@ -1712,6 +1712,8 @@ DrawGUIText		PROC	NEAR
 				mov bx, 4d
 				int 10h
 
+				CALL UpdatePowerupsScore		;draw the powerups text
+
 				POPA
 				RET
 DrawGUIText		ENDP
@@ -1742,6 +1744,132 @@ UpdatePlayersScore	PROC	NEAR
 					POPA
 					RET
 UpdatePlayersScore	ENDP
+;---------------------------------------------------
+;This procedure updates the score of the powerups for both players
+;@param				none
+;@return			none
+UpdatePowerupsScore	PROC	NEAR
+					PUSHA
+
+					MOV AL, leftPowerupFreezeCount
+					LEA SI, LeftFreezeText
+					CALL ParseIntToString
+
+					MOV AL, rightPowerupFreezeCount
+					LEA SI, rightFreezeText
+					CALL ParseIntToString
+
+					MOV AL, leftPowerupSpeedUpCount
+					LEA SI, LeftSpeedUpText
+					CALL ParseIntToString
+
+					MOV AL, rightPowerupSpeedUpCount
+					LEA SI, rightSpeedUpText
+					CALL ParseIntToString
+
+					MOV AL, leftPowerupRemoveLinesCount
+					LEA SI, LeftRemoveLinesText
+					CALL ParseIntToString
+
+					MOV AL, rightPowerupRemoveLinesCount
+					LEA SI, rightRemoveLinesText
+					CALL ParseIntToString
+
+					MOV AL, leftPowerupChangePieceCount
+					LEA SI, LeftChangePieceText
+					CALL ParseIntToString
+
+					MOV AL, rightPowerupChangePieceCount
+					LEA SI, rightChangePieceText
+					CALL ParseIntToString
+
+					mov ah, 13h
+					mov cx, leftFreezeTextLength
+					mov dh, LeftFreezeStringLocY
+					mov dl, LeftFreezeStringLocX
+					lea bp, LeftFreezeText
+					mov bx, 4d
+					int 10h
+
+					mov ah, 13h
+					mov cx, leftSpeedUpTextLength
+					mov dh, LeftSpeedUpStringLocY
+					mov dl, LeftSpeedUpStringLocX
+					lea bp, LeftSpeedUpText
+					mov bx, 4d
+					int 10h
+
+					mov ah, 13h
+					mov cx, leftRemoveLinesTextLength
+					mov dh, LeftRemoveLinesStringLocY
+					mov dl, LeftRemoveLinesStringLocX
+					lea bp, LeftRemoveLinesText
+					mov bx, 4d
+					int 10h
+
+					mov ah, 13h
+					mov cx, leftChangePieceTextLength
+					mov dh, LeftChangePieceStringLocY
+					mov dl, LeftChangePieceStringLocX
+					lea bp, LeftChangePieceText
+					mov bx, 4d
+					int 10h
+
+					mov ah, 13h
+					mov cx, rightFreezeTextLength
+					mov dh, rightFreezeStringLocY
+					mov dl, rightFreezeStringLocX
+					lea bp, rightFreezeText
+					mov bx, 4d
+					int 10h
+
+					mov ah, 13h
+					mov cx, rightSpeedUpTextLength
+					mov dh, rightSpeedUpStringLocY
+					mov dl, rightSpeedUpStringLocX
+					lea bp, rightSpeedUpText
+					mov bx, 4d
+					int 10h
+
+					mov ah, 13h
+					mov cx, rightRemoveLinesTextLength
+					mov dh, rightRemoveLinesStringLocY
+					mov dl, rightRemoveLinesStringLocX
+					lea bp, rightRemoveLinesText
+					mov bx, 4d
+					int 10h
+
+					mov ah, 13h
+					mov cx, rightChangePieceTextLength
+					mov dh, rightChangePieceStringLocY
+					mov dl, rightChangePieceStringLocX
+					lea bp, rightChangePieceText
+					mov bx, 4d
+					int 10h
+
+					POPA
+					RET
+UpdatePowerupsScore ENDP
+;---------------------------------------------------
+;this procedure takes a 2 decimal places integer variable and parses it into a string
+;@param				AL: the integer variable
+;					SI: offset of string
+;@return			none
+ParseIntToString	PROC	NEAR
+					PUSHA
+
+					MOV AH, 0
+					MOV CL,10D
+					DIV CL
+					ADD AL,30H
+					MOV [SI],AL
+					INC SI
+					ADD AH,30H
+					MOV [SI],AH
+
+					POPA
+					RET
+ParseIntToString	ENDP
 ;---------------------------------------------------
 ;This procedure copies data of the next piece to the current piece to draw it
 ;@params		SI: 0 for left screen,4 for right screen
@@ -1876,14 +2004,17 @@ PowerupBreak:
 					DIV CL					;divide score by CL, check if it is divisible by it
 					CMP AH, 0
 					JNZ NoPowerUp
-					MOV BX, 0
-					MOV CL, 5				;number of powerups
+					CMP AL, 0
+					JZ  NoPowerUp
+					MOV BX, 5				;number of powerups
 					CALL GenerateRandomNumber
-					;bl now has a random number from 0 to 3 inclusive
+					;bl now has a random number from 0 to 4 inclusive
+					;MOV leftPowerupFreezeCount, BL
 					ADD DI, BX
 					INC DI					;moves DI to rand_number+1
 					MOV BL, 1
 					ADD [DI], BL			;increases the number of that powerup
+					CALL UpdatePowerupsScore
 NoPowerUp:
 					POPA
 					RET
