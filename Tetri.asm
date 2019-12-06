@@ -148,11 +148,21 @@ leftDownCode			DB	1Fh		;S key
 leftLeftCode			DB	1Eh		;A key
 leftRightCode			DB	20h		;D key
 leftRotCode				DB	11h		;W key
+leftPower1				DB  02h		;1 key
+leftPower2				DB  03h		;2 key
+leftPower3				DB  04h		;3 key
+leftPower4				DB  05h		;4 key
+leftPower5				DB  06h		;5 key
 ;Controls for right screen
 rightDownCode			DB	50h		;downArrow key
 rightLeftCode			DB	4Bh 	;leftArrow key
 rightRightCode			DB	4Dh		;rightArrow key
 rightRotCode			DB	48h 	;upArrow key
+rightPower1				DB	31h		;N key
+rightPower2				DB	32h		;M key
+rightPower3				DB	33h 	;, key
+rightPower4				DB	34h		;. key
+rightPower5				DB	35h		;/ key
 
 ;General ScanCodes
 EnterCode  DB 1CH
@@ -913,14 +923,14 @@ RightRotKey:
 		JNZ RightLeftKey
 
 		CMP rightPieceRotationLock,1 ;check if the rotation is locked
-		JZ BreakParseInput
+		JZ BreakRotParseInput
 
 		MOV SI, 4
 		CALL GetTempPiece
 
 		MOV SI, 4
 		CALL RotatePiece
-
+BreakRotParseInput:
 		JMP BreakParseInput
 RightLeftKey:
 		CMP AH, rightLeftCode
@@ -946,13 +956,77 @@ RightDownKey:
 		JMP BreakParseInput
 RightRightKey:
 		CMP AH, rightRightCode
-		JNZ BreakParseInput
+		JNZ LeftPowerup1
 		MOV SI, 4
 		CALL GetTempPiece
 		
 		MOV SI, 4
 		MOV BX, 2
 		CALL MovePiece
+		JMP BreakParseInput
+
+LeftPowerup1:
+		CMP AH, leftPower1
+		JNZ LeftPowerup2
+
+		JMP BreakParseInput
+LeftPowerup2:
+		CMP AH, leftPower2
+		JNZ LeftPowerup3
+
+		JMP BreakParseInput
+LeftPowerup3:
+		CMP AH, leftPower3
+		JNZ LeftPowerup4
+		
+		MOV SI, 0
+		CALL RemoveFourLines
+		SUB leftPowerupRemoveLinesCount, 1
+		CALL UpdatePowerupsScore
+
+		JMP BreakParseInput
+LeftPowerup4:
+		CMP AH, LeftPower4
+		JNZ LeftPowerup5
+
+		JMP BreakParseInput
+LeftPowerup5:
+		CMP AH, leftRotCode
+		JNZ RightPowerup1
+
+		JMP BreakParseInput
+
+RightPowerup1:
+		CMP AH, RightPower1
+		JNZ RightPowerup2
+
+		JMP BreakParseInput
+RightPowerup2:
+		CMP AH, RightPower2
+		JNZ RightPowerup3
+
+		JMP BreakParseInput
+RightPowerup3:
+		CMP AH, RightPower3
+		JNZ RightPowerup4
+
+		MOV SI, 4
+		CALL RemoveFourLines
+		SUB rightPowerupRemoveLinesCount, 1
+		CALL UpdatePowerupsScore
+
+		JMP BreakParseInput
+RightPowerup4:
+		CMP AH, RightPower4
+		JNZ RightPowerup5
+
+		JMP BreakParseInput
+RightPowerup5:
+		CMP AH, rightRotCode
+		JNZ BreakParseInput
+
+
+		JMP BreakParseInput
 
 BreakParseInput:
 		RET
@@ -2054,8 +2128,7 @@ RemoveFourLines		PROC	NEAR
 		DEC DX
 
 RemoveFourLinesLoop: 
-		CALL RemoveLine			
-		DEC DX										;go to next line
+		CALL RemoveLine												;go to next line
 		LOOP RemoveFourLinesLoop
 
 		POPA
