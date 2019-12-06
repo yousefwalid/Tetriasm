@@ -1237,14 +1237,14 @@ CHECKLINESKIPINC:
 				MOV AX, SI
 				CMP SI, 0D
 				JNZ CHECKLINESIIS0			;if SI is 4, make it 0, if it's 0, make it 4
-				ADD Player2Score, DeltaScore		;increase score
+				ADD Player1Score, DeltaScore		;increase score
 				CALL UpdatePlayersScore
 
 				MOV SI, 4D
 				JMP CHECKLINESIIS4
 CHECKLINESIIS0:
 				MOV SI, 0D
-				ADD Player1Score, DeltaScore		;increase score
+				ADD Player2Score, DeltaScore		;increase score
 				CALL UpdatePlayersScore
 CHECKLINESIIS4:
 				CALL InsertLine				;insert a line at the other player
@@ -1449,6 +1449,7 @@ DisplayMenu      ENDP
 ;Returns 	NONE
 ChangeScoreToText	PROC	NEAR
 					PUSHA
+					MOV AH, 0
 					MOV AL,Player1Score
 					MOV CL,10D
 					DIV CL
@@ -1459,6 +1460,7 @@ ChangeScoreToText	PROC	NEAR
 					ADD AH,30H
 					MOV [SI],AH
 
+					MOV AH, 0
 					MOV AL,Player2Score
 					MOV CL,10D
 					DIV CL
@@ -1477,6 +1479,7 @@ ChangeScoreToText	ENDP
 ;@param				none
 ;@return			none
 DrawGUIText		PROC	NEAR
+				PUSHA
 				mov ah, 13h
 				mov cx, NEXTPIECETEXTLENGTH
 				mov dh, LEFTNEXTPIECELOCY
@@ -1508,8 +1511,8 @@ DrawGUIText		PROC	NEAR
 				lea bp, SCORETEXT
 				mov bx, 4d
 				int 10h
-
 				CALL UpdatePlayersScore
+				POPA
 				RET
 DrawGUIText		ENDP
 ;---------------------------------------------------
