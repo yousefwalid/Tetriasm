@@ -28,13 +28,10 @@ RIGHTNEXTPIECELOCY	EQU 3
 SCORETEXTLENGTH		EQU 5
 SCORETEXT			DB	"Score"
 LeftScoreLocX		EQU 45
-LeftScoreLocY		EQU 12
+LeftScoreLocY		EQU 10
 RightScoreLocX		EQU 107
-RightScoreLocY		EQU 12
-RightPlyLocX		EQU 107
-RightPlyLocY		EQU 10
-LeftPlyLocX			EQU 45
-LeftPlyLocY			EQU 10
+RightScoreLocY		EQU 10
+
 
 LeftScoreTextLength EQU 2
 LeftScoreText		DB "00"
@@ -127,6 +124,11 @@ GAMERIGHTSCRY       DW  30      ;top left corner Y of right screen
 
 
 ;===========================================================================
+RightPlyLocX		EQU 67
+RightPlyLocY		EQU 2
+LeftPlyLocX			EQU 5
+LeftPlyLocY			EQU 2
+
 LogoWidth EQU 320D
 LogoHeight EQU 200D
 
@@ -297,7 +299,7 @@ MAIN    PROC    FAR
 		MOV AL, 13H ; Mode 13h
 		INT 10H 
  
-		CALL DisplayMenu 
+		;CALL DisplayMenu 
 ;-----------------------------------------------
 
 		;MOV AH, 00H       ;PREPARE GFX MODE
@@ -323,10 +325,6 @@ MAIN    PROC    FAR
 		CALL GetTempNextPiece
 		CALL SetNextPieceData
 		CALL GenerateRandomPiece
-
-		; MOV SI,4
-		; CALL FreezeRotation
-		; CALL SpeedUpOpponentPiece
 
 GAMELP:	
 		CALL ParseInput
@@ -2181,7 +2179,7 @@ RemoveFourLinesLoop:
 		CALL ShiftLinesDown												;go to next line
 		LOOP RemoveFourLinesLoop
 		
-		; CALL DrawPiece
+		CALL DrawPiece
 
 		POPA
 		RET
