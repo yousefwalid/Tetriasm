@@ -17,6 +17,9 @@ GAMESCRHEIGHT       EQU  FRAMEHEIGHT * BLOCKSIZE     ;height of each screen in p
 
 FRAMETEXTOFFSET		EQU 50
 
+UnderlineStringLength 	equ 128
+UnderlineString		DB	"________________________________________________________________________________________________________________________________"
+
 NEXTPIECETEXTLENGTH EQU 4
 NEXTPIECETEXT		DB	"Next"
 LEFTNEXTPIECELOCX	EQU 45
@@ -25,24 +28,24 @@ RIGHTNEXTPIECELOCX	EQU 107
 RIGHTNEXTPIECELOCY	EQU 3
 
 
-SCORETEXTLENGTH		EQU 5
-SCORETEXT			DB	"Score"
-LeftScoreLocX		EQU 45
-LeftScoreLocY		EQU 10
-RightScoreLocX		EQU 107
-RightScoreLocY		EQU 10
+SCORETEXTLENGTH		EQU 6
+SCORETEXT			DB	"Score:"
+LeftScoreLocX		EQU 23
+LeftScoreLocY		EQU 31
+RightScoreLocX		EQU 87
+RightScoreLocY		EQU 31
 
 
 LeftScoreTextLength EQU 2
 LeftScoreText		DB "00"
-LeftScoreStringLocX	EQU 45
-LeftScoreStringLocY	EQU LeftScoreLocY+1
+LeftScoreStringLocX	EQU LeftScoreLocX+7
+LeftScoreStringLocY	EQU LeftScoreLocY
 
 
 RightScoreTextLength 	EQU 2
 RightScoreText			DB "00"
-RightScoreStringLocX	EQU 107
-RightScoreStringLocY	EQU RightScoreLocY+1
+RightScoreStringLocX	EQU RightScoreLocX+7
+RightScoreStringLocY	EQU RightScoreLocY
 
 FreezeStringLength		EQU 6
 FreezeStringColor		EQU 4
@@ -141,10 +144,10 @@ GAMERIGHTSCRY       DW  30      ;top left corner Y of right screen
 
 
 ;===========================================================================
-RightPlyLocX		EQU 67
-RightPlyLocY		EQU 2
-LeftPlyLocX			EQU 5
-LeftPlyLocY			EQU 2
+RightPlyLocX		EQU RightScoreLocX-10
+RightPlyLocY		EQU RightScoreLocY
+LeftPlyLocX			EQU LeftScoreLocX-10
+LeftPlyLocY			EQU LeftScoreLocY
 
 LogoWidth EQU 320D
 LogoHeight EQU 200D
@@ -316,7 +319,7 @@ MAIN    PROC    FAR
 		MOV AL, 13H ; Mode 13h
 		INT 10H 
  
-		;CALL DisplayMenu 
+		CALL DisplayMenu 
 ;-----------------------------------------------
 
 		;MOV AH, 00H       ;PREPARE GFX MODE
@@ -1826,6 +1829,22 @@ ChangeScoreToText	ENDP
 ;@return			none
 DrawGUIText		PROC	NEAR
 				PUSHA
+
+				mov ah, 13h
+				mov cx, UnderlineStringLength
+				mov dh, LeftScoreLocY-2
+				mov dl, 0
+				lea bp, UnderlineString
+				mov bx, 0fh
+				int 10h
+
+				mov ah, 13h
+				mov cx, UnderlineStringLength
+				mov dh, LeftScoreLocY+1
+				mov dl, 0
+				lea bp, UnderlineString
+				mov bx, 0fh
+				int 10h
 
 				;render the left screen next piece text
 				mov ah, 13h
