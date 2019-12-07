@@ -20,12 +20,15 @@ FRAMETEXTOFFSET		EQU 50
 UnderlineStringLength 	equ 128
 UnderlineString		DB	"________________________________________________________________________________________________________________________________"
 
+PressEscToExitStringLength EQU 24
+PressEscToExitString DB "Press ESC Key to exit..."
+
 NEXTPIECETEXTLENGTH EQU 4
 NEXTPIECETEXT		DB	"Next"
 LEFTNEXTPIECELOCX	EQU 45
-LEFTNEXTPIECELOCY	EQU 3
-RIGHTNEXTPIECELOCX	EQU 107
-RIGHTNEXTPIECELOCY	EQU 3
+LEFTNEXTPIECELOCY	EQU 4
+RIGHTNEXTPIECELOCX	EQU 108
+RIGHTNEXTPIECELOCY	EQU 4
 
 
 SCORETEXTLENGTH		EQU 6
@@ -152,14 +155,14 @@ LeftFrameTopFilehandle DW ?
 LeftFrameLeftWidth EQU  51
 LeftFrameLeftHeight EQU 426
 LeftFrameLeftFilename DB 'iceleft.bin', 0
-LeftFrameLeftX		 EQU 50
+LeftFrameLeftX		 EQU 51
 LeftFrameLeftY		 EQU 54
 LeftFrameLeftFilehandle DW ?
 
 LeftFrameRightWidth EQU  43
 LeftFrameRightHeight EQU 426
 LeftFrameRightFilename DB 'iceright.bin', 0
-LeftFrameRightX		 EQU 298
+LeftFrameRightX		 EQU 297
 LeftFrameRightY		 EQU 54
 LeftFrameRightFilehandle DW ?
 
@@ -265,6 +268,7 @@ rightPower5				DB	35h		;/ key
 EnterCode  DB 1CH
 F2Code     DB 3CH
 F10Code    DB 44H 
+ESCCode	   DB 01H
 
 PowerupEveryPoint			EQU 4
 
@@ -967,6 +971,15 @@ ParseInput		PROC	NEAR
 YesInput:
 		MOV AH, 0
 		INT 16H
+ExitGame:
+		CMP AH, ESCCode
+		JNZ LeftRotKey
+
+		;------ this should be changed to return to menu instead
+		MOV AH, 4CH
+		INT 21H
+
+		JMP BreakParseInput
 LeftRotKey:
 		CMP AH, leftRotCode
 		JNZ LeftLeftKey
@@ -1887,21 +1900,43 @@ ChangeScoreToText	ENDP
 DrawGUIText		PROC	NEAR
 				PUSHA
 
+				;score bars
+				;top
 				mov ah, 13h
 				mov cx, UnderlineStringLength
 				mov dh, LeftScoreLocY-2
 				mov dl, 0
 				lea bp, UnderlineString
-				mov bx, 0fh
+				mov bx, 07h
 				int 10h
 
+				;bottom
 				mov ah, 13h
 				mov cx, UnderlineStringLength
 				mov dh, LeftScoreLocY+1
 				mov dl, 0
 				lea bp, UnderlineString
-				mov bx, 0fh
+				mov bx, 07h
 				int 10h
+
+				;notification bar
+				mov ah, 13h
+				mov cx, UnderlineStringLength
+				mov dh, 46
+				mov dl, 0
+				lea bp, UnderlineString
+				mov bx, 07h
+				int 10h
+
+				;notification text
+				mov ah, 13h
+				mov cx, PressEscToExitStringLength
+				mov dh, 47
+				mov dl, 0
+				lea bp, PressEscToExitString
+				mov bx, 07h
+				int 10h
+			
 
 				;render the left screen next piece text
 				mov ah, 13h
@@ -1964,7 +1999,7 @@ DrawGUIText		PROC	NEAR
 				mov dh, LeftFreezeLocY
 				mov dl, LeftFreezeLocX
 				lea bp, FreezeString
-				mov bx, 4d
+				mov bx, 3d
 				int 10h
 
 				mov ah, 13h
@@ -1972,7 +2007,7 @@ DrawGUIText		PROC	NEAR
 				mov dh, LeftSpeedUpLocY
 				mov dl, LeftSpeedUpLocX
 				lea bp, SpeedUpString
-				mov bx, 4d
+				mov bx, 14d
 				int 10h
 
 				mov ah, 13h
@@ -1980,7 +2015,7 @@ DrawGUIText		PROC	NEAR
 				mov dh, LeftRemoveLinesLocY
 				mov dl, LeftRemoveLinesLocX
 				lea bp, RemoveLinesString
-				mov bx, 4d
+				mov bx, 41d
 				int 10h
 
 				mov ah, 13h
@@ -1988,7 +2023,7 @@ DrawGUIText		PROC	NEAR
 				mov dh, LeftChangePieceLocY
 				mov dl, LeftChangePieceLocX
 				lea bp, ChangePieceString
-				mov bx, 4d
+				mov bx, 46d
 				int 10h
 
 				mov ah, 13h
@@ -1996,7 +2031,7 @@ DrawGUIText		PROC	NEAR
 				mov dh, LeftInsertTwoLinesLocY
 				mov dl, LeftInsertTwoLinesLocX
 				lea bp, InsertTwoLinesString
-				mov bx, 4d
+				mov bx, 60d
 				int 10h
 
 				;render right powerups
@@ -2006,7 +2041,7 @@ DrawGUIText		PROC	NEAR
 				mov dh, RightFreezeLocY
 				mov dl, RightFreezeLocX
 				lea bp, FreezeString
-				mov bx, 4d
+				mov bx, 3d
 				int 10h
 
 				mov ah, 13h
@@ -2014,7 +2049,7 @@ DrawGUIText		PROC	NEAR
 				mov dh, RightSpeedUpLocY
 				mov dl, RightSpeedUpLocX
 				lea bp, SpeedUpString
-				mov bx, 4d
+				mov bx, 14d
 				int 10h
 
 				mov ah, 13h
@@ -2022,7 +2057,7 @@ DrawGUIText		PROC	NEAR
 				mov dh, RightRemoveLinesLocY
 				mov dl, RightRemoveLinesLocX
 				lea bp, RemoveLinesString
-				mov bx, 4d
+				mov bx, 41d
 				int 10h
 
 				mov ah, 13h
@@ -2030,7 +2065,7 @@ DrawGUIText		PROC	NEAR
 				mov dh, RightChangePieceLocY
 				mov dl, RightChangePieceLocX
 				lea bp, ChangePieceString
-				mov bx, 4d
+				mov bx, 46d
 				int 10h
 
 				mov ah, 13h
@@ -2038,7 +2073,7 @@ DrawGUIText		PROC	NEAR
 				mov dh, RightInsertTwoLinesLocY
 				mov dl, RightInsertTwoLinesLocX
 				lea bp, InsertTwoLinesString
-				mov bx, 4d
+				mov bx, 60d
 				int 10h
 
 				CALL UpdatePowerupsScore		;draw the powerups text
@@ -2126,7 +2161,7 @@ UpdatePowerupsScore	PROC	NEAR
 					mov dh, LeftFreezeStringLocY
 					mov dl, LeftFreezeStringLocX
 					lea bp, LeftFreezeText
-					mov bx, 4d
+					mov bx, 3d
 					int 10h
 
 					mov ah, 13h
@@ -2134,7 +2169,7 @@ UpdatePowerupsScore	PROC	NEAR
 					mov dh, LeftSpeedUpStringLocY
 					mov dl, LeftSpeedUpStringLocX
 					lea bp, LeftSpeedUpText
-					mov bx, 4d
+					mov bx, 14d
 					int 10h
 
 					mov ah, 13h
@@ -2142,7 +2177,7 @@ UpdatePowerupsScore	PROC	NEAR
 					mov dh, LeftRemoveLinesStringLocY
 					mov dl, LeftRemoveLinesStringLocX
 					lea bp, LeftRemoveLinesText
-					mov bx, 4d
+					mov bx, 41d
 					int 10h
 
 					mov ah, 13h
@@ -2150,7 +2185,7 @@ UpdatePowerupsScore	PROC	NEAR
 					mov dh, LeftChangePieceStringLocY
 					mov dl, LeftChangePieceStringLocX
 					lea bp, LeftChangePieceText
-					mov bx, 4d
+					mov bx, 46d
 					int 10h
 
 					mov ah, 13h
@@ -2158,7 +2193,7 @@ UpdatePowerupsScore	PROC	NEAR
 					mov dh, LeftInsertTwoLinesStringLocY
 					mov dl, LeftInsertTwoLinesStringLocX
 					lea bp, LeftInsertTwoLinesText
-					mov bx, 4d
+					mov bx, 60d
 					int 10h
 
 					mov ah, 13h
@@ -2166,7 +2201,7 @@ UpdatePowerupsScore	PROC	NEAR
 					mov dh, rightFreezeStringLocY
 					mov dl, rightFreezeStringLocX
 					lea bp, rightFreezeText
-					mov bx, 4d
+					mov bx, 3d
 					int 10h
 
 					mov ah, 13h
@@ -2174,7 +2209,7 @@ UpdatePowerupsScore	PROC	NEAR
 					mov dh, rightSpeedUpStringLocY
 					mov dl, rightSpeedUpStringLocX
 					lea bp, rightSpeedUpText
-					mov bx, 4d
+					mov bx, 14d
 					int 10h
 
 					mov ah, 13h
@@ -2182,7 +2217,7 @@ UpdatePowerupsScore	PROC	NEAR
 					mov dh, rightRemoveLinesStringLocY
 					mov dl, rightRemoveLinesStringLocX
 					lea bp, rightRemoveLinesText
-					mov bx, 4d
+					mov bx, 41d
 					int 10h
 
 					mov ah, 13h
@@ -2190,7 +2225,7 @@ UpdatePowerupsScore	PROC	NEAR
 					mov dh, rightChangePieceStringLocY
 					mov dl, rightChangePieceStringLocX
 					lea bp, rightChangePieceText
-					mov bx, 4d
+					mov bx, 46d
 					int 10h
 
 					mov ah, 13h
@@ -2198,7 +2233,7 @@ UpdatePowerupsScore	PROC	NEAR
 					mov dh, rightInsertTwoLinesStringLocY
 					mov dl, rightInsertTwoLinesStringLocX
 					lea bp, rightInsertTwoLinesText
-					mov bx, 4d
+					mov bx, 60d
 					int 10h
 
 					POPA
@@ -2274,7 +2309,7 @@ DRAWPIECELOPX1:
 					DIV CL						;AH = id%4, AL = id/4
 					MOV CX, 0
 					MOV DX, 0
-					MOV CL, 12				;load selected piece X into CL
+					MOV CL, 13				;load selected piece X into CL
 					MOV DL, 2				;load selected piece Y into DL
 					ADD CL, AH					;CX = orig_x + id%4
 					ADD DL, AL					;DX = orig_y + id/4
@@ -2320,7 +2355,7 @@ LOPX1:
 					DIV CL						;AH = id%4, AL = id/4
 					MOV CX, 0
 					MOV DX, 0
-					MOV CL, 12				;load selected piece X into CL
+					MOV CL, 13				;load selected piece X into CL
 					MOV DL, 2				;load selected piece Y into DL
 					ADD CL, AH					;CX = orig_x + id%4
 					ADD DL, AL					;DX = orig_y + id/4
@@ -2368,6 +2403,11 @@ PowerupBreak:
 					MOV BL, 1
 					ADD [DI], BL			;increases the number of that powerup
 					CALL UpdatePowerupsScore
+
+					MOV AH, 2				;create beep sound
+					MOV DL, 7
+					INT 21H
+
 NoPowerUp:
 					POPA
 					RET
