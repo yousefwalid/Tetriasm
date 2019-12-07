@@ -79,8 +79,8 @@ RightSpeedUpText		DB "00"
 RightSpeedUpStringLocX	EQU 107
 RightSpeedUpStringLocY	EQU RightSpeedUpLocY+1
 
-RemoveLinesStringLength		EQU 12
-RemoveLinesString			DB	"Remove Lines"
+RemoveLinesStringLength		EQU 14
+RemoveLinesString			DB	"Remove 4 Lines"
 LeftRemoveLinesLocX			EQU 45
 LeftRemoveLinesLocY			EQU 19
 RightRemoveLinesLocX		EQU 107
@@ -113,8 +113,8 @@ RightChangePieceText		DB "00"
 RightChangePieceStringLocX	EQU 107
 RightChangePieceStringLocY	EQU RightChangePieceLocY+1
 
-InsertTwoLinesStringLength		EQU 12
-InsertTwoLinesString			DB	"Insert Lines"
+InsertTwoLinesStringLength		EQU 14
+InsertTwoLinesString			DB	"Insert 2 Lines"
 LeftInsertTwoLinesLocX			EQU 45
 LeftInsertTwoLinesLocY			EQU 25
 RightInsertTwoLinesLocX		EQU 107
@@ -1006,56 +1006,86 @@ LeftPowerup1:
 		CMP AH, leftPower1
 		JNZ LeftPowerup2
 
+		MOV AH, leftPowerupFreezeCount
+		CMP AH, 0
+		JZ	BreakPowerup1
+
 		MOV SI, 0
 		CALL FreezeRotation
 		SUB leftPowerupFreezeCount, 1
 		CALL UpdatePowerupsScore
 
-
+BreakPowerup1:
 		JMP BreakParseInput
+
 LeftPowerup2:
 		CMP AH, leftPower2
 		JNZ LeftPowerup3
+
+		MOV AH, leftPowerupSpeedUpCount
+		CMP AH, 0
+		JZ	BreakPowerup2
 
 		MOV SI, 0
 		CALL SpeedUpOpponentPiece
 		SUB leftPowerupSpeedUpCount, 1
 		CALL UpdatePowerupsScore
 
+BreakPowerup2:
 		JMP BreakParseInput
 LeftPowerup3:
 		CMP AH, leftPower3
 		JNZ LeftPowerup4
 		
+		MOV AH, leftPowerupRemoveLinesCount
+		CMP AH, 0
+		JZ	BreakPowerup3
+
 		MOV SI, 0
 		CALL RemoveFourLines
 		SUB leftPowerupRemoveLinesCount, 1
 		CALL UpdatePowerupsScore
-
+BreakPowerup3:
 		JMP BreakParseInput
 LeftPowerup4:
 		CMP AH, LeftPower4
 		JNZ LeftPowerup5
+
+		MOV AH, leftPowerupChangePieceCount
+		CMP AH, 0
+		JZ	BreakPowerup4
+
 		MOV SI,0
 		CALL ChangePiece
 		SUB leftPowerupChangePieceCount,1
 		CALL UpdatePowerupsScore
-
+BreakPowerup4:
 		JMP BreakParseInput
+
 LeftPowerup5:
 		CMP AH, LeftPower5
 		JNZ RightPowerup1
+
+		MOV AH, leftPowerupInsertTwoLinesCount
+		CMP AH, 0
+		JZ	BreakPowerup5
+
 
 		MOV SI,0
 		CALL InsertTwoLines
 		SUB leftPowerupInsertTwoLinesCount,1
 		CALL UpdatePowerupsScore
 
+BreakPowerup5:
 		JMP BreakParseInput
 
 RightPowerup1:
 		CMP AH, RightPower1
 		JNZ RightPowerup2
+
+		MOV AH, rightPowerupFreezeCount
+		CMP AH, 0
+		JZ	BreakPowerup5
 
 		MOV SI, 4
 		CALL FreezeRotation
@@ -1067,6 +1097,10 @@ RightPowerup2:
 		CMP AH, RightPower2
 		JNZ RightPowerup3
 
+		MOV AH, rightPowerupSpeedUpCount
+		CMP AH, 0
+		JZ	BreakPowerup5
+
 		MOV SI, 4
 		CALL SpeedUpOpponentPiece
 		SUB rightPowerupSpeedUpCount, 1
@@ -1076,6 +1110,10 @@ RightPowerup2:
 RightPowerup3:
 		CMP AH, RightPower3
 		JNZ RightPowerup4
+
+		MOV AH, rightPowerupRemoveLinesCount
+		CMP AH, 0
+		JZ	BreakPowerup5
 
 		MOV SI, 4
 		CALL RemoveFourLines
@@ -1087,6 +1125,10 @@ RightPowerup4:
 		CMP AH, RightPower4
 		JNZ RightPowerup5
 
+		MOV AH, rightPowerupChangePieceCount
+		CMP AH, 0
+		JZ	BreakPowerup5
+
 		MOV SI,4
 		CALL ChangePiece
 		SUB rightPowerupChangePieceCount,1
@@ -1096,6 +1138,10 @@ RightPowerup4:
 RightPowerup5:
 		CMP AH, RightPower5
 		JNZ BreakParseInput
+
+		MOV AH, rightPowerupInsertTwoLinesCount
+		CMP AH, 0
+		JZ	BreakParseInput
 
 		MOV SI,4
 		CALL InsertTwoLines
