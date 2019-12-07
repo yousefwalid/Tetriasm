@@ -1017,6 +1017,10 @@ LeftPowerup3:
 LeftPowerup4:
 		CMP AH, LeftPower4
 		JNZ LeftPowerup5
+		MOV SI,0
+		CALL ChangePiece
+		SUB leftPowerupChangePieceCount,1
+		CALL UpdatePowerupsScore
 
 		JMP BreakParseInput
 LeftPowerup5:
@@ -1059,6 +1063,11 @@ RightPowerup4:
 		CMP AH, RightPower4
 		JNZ RightPowerup5
 
+		MOV SI,4
+		CALL ChangePiece
+		SUB rightPowerupChangePieceCount,1
+		CALL UpdatePowerupsScore
+
 		JMP BreakParseInput
 RightPowerup5:
 		CMP AH, rightRotCode
@@ -1075,55 +1084,55 @@ ParseInput		ENDP
 ;@param			none
 ;@return		none
 PieceGravity	PROC	NEAR
-		PUSHA
-		mov  AH, 2CH
-		INT  21H 			;RETURN SECONDS IN DH.
-		CMP DH,seconds		;Check if one second has passed
-		JE NO_CHANGE
-		MOV seconds,DH		;moves current second to the seconds variable
-		MOV BX,0			;Parameter to move piece in particular direction
-		MOV SI,0
-		CALL GetTempPiece	;sets the TempPieceOffset with the address of the leftPiece
-		MOV AX,0			;Clearing AX before using it
-		MOV AX,tempPieceOffset ;gets the leftPiece's data offset
-		ADD AX,14H			;Access the speed of the left piece
-		MOV DI,AX			;DI=leftPieceSpeed
-		MOV CX,0			;Clears the CX before looping
-		MOV CL,[DI]			;moves the piece number of steps equal to it's speed
-MOVELEFT:		
-		CALL MovePiece
-		JZ COLL1
-		LOOP MOVELEFT
-		JMP CHECK2
-COLL1:	
-		MOV SI,0
-		CALL UnfreezeRotation
-		CALL ResetPieceSpeed	;if changed reset it to its original
-		CALL CheckLineClear		;check if a line has been cleared
-		CALL GenerateRandomPiece
-		
-CHECK2:	MOV SI,4			
-		CALL GetTempPiece	;sets the TempPieceOffset with the address of the rightPiece
-		MOV AX,0			;Clearing AX before using it
-		MOV AX,tempPieceOffset	;gets the rightPiece's data offset
-		ADD AX,14H			;Access the speed of the right piece
-		MOV DI,AX			;DI=rightPieceSpeed
-		MOV CX,0			;Clears the CX before looping
-		MOV CL,[DI]			;moves the piece number of steps equal to it's speed
-MOVERIGHT:		
-		CALL MovePiece
-		JZ	COLL2
-		LOOP MOVERIGHT
-		JMP NO_CHANGE
-COLL2:	
-		MOV SI,4
-		CALL UnfreezeRotation
-		CALL ResetPieceSpeed	;if chnaged reset it to its original speed
-		CALL CheckLineClear		;check if a line has been cleared
-		CALL GenerateRandomPiece
-NO_CHANGE:	
-		POPA
-		RET
+				PUSHA
+				mov  AH, 2CH
+				INT  21H 			;RETURN SECONDS IN DH.
+				CMP DH,seconds		;Check if one second has passed
+				JE NO_CHANGE
+				MOV seconds,DH		;moves current second to the seconds variable
+				MOV BX,0			;Parameter to move piece in particular direction
+				MOV SI,0
+				CALL GetTempPiece	;sets the TempPieceOffset with the address of the leftPiece
+				MOV AX,0			;Clearing AX before using it
+				MOV AX,tempPieceOffset ;gets the leftPiece's data offset
+				ADD AX,14H			;Access the speed of the left piece
+				MOV DI,AX			;DI=leftPieceSpeed
+				MOV CX,0			;Clears the CX before looping
+				MOV CL,[DI]			;moves the piece number of steps equal to it's speed
+		MOVELEFT:		
+				CALL MovePiece
+				JZ COLL1
+				LOOP MOVELEFT
+				JMP CHECK2
+		COLL1:	
+				MOV SI,0
+				CALL UnfreezeRotation
+				CALL ResetPieceSpeed	;if changed reset it to its original
+				CALL CheckLineClear		;check if a line has been cleared
+				CALL GenerateRandomPiece
+				
+		CHECK2:	MOV SI,4			
+				CALL GetTempPiece	;sets the TempPieceOffset with the address of the rightPiece
+				MOV AX,0			;Clearing AX before using it
+				MOV AX,tempPieceOffset	;gets the rightPiece's data offset
+				ADD AX,14H			;Access the speed of the right piece
+				MOV DI,AX			;DI=rightPieceSpeed
+				MOV CX,0			;Clears the CX before looping
+				MOV CL,[DI]			;moves the piece number of steps equal to it's speed
+		MOVERIGHT:		
+				CALL MovePiece
+				JZ	COLL2
+				LOOP MOVERIGHT
+				JMP NO_CHANGE
+		COLL2:	
+				MOV SI,4
+				CALL UnfreezeRotation
+				CALL ResetPieceSpeed	;if chnaged reset it to its original speed
+				CALL CheckLineClear		;check if a line has been cleared
+				CALL GenerateRandomPiece
+		NO_CHANGE:	
+				POPA
+				RET
 PieceGravity	ENDP	
 ;---------------------------
 ;This procedure sets the collision piece by copying temp piece data to collision data
@@ -1336,33 +1345,33 @@ GenerateRandomNumber	ENDP
 ;@param			CX:Added number to go the correct piece, SI:0 for left , 4 for right
 ;@				ZF:if 0 then collided ,1 clear to rotate
 RotationCollision	PROC	NEAR
-				PUSHA
-				DEC BX						;SI Points to PieceID
-				ADD DI,CX					;DI Points to the data after applying the rotation
-				PUSH DI					;Stack holds temporarily offset of the data after rotation
-				MOV DI,offset collisionPieceId	;DI = collisionPieceID
-				MOV CX,4
-COPYCOLL0:		MOV AL,[BX]
-				MOV [DI],AL
-				INC BX
-				INC DI
-				LOOP COPYCOLL0
-				ADD BX,16D
-				ADD DI,16D
-				MOV AL,[BX]
-				MOV [DI],AL
-				SUB DI,16D
-				POP BX			;BX holds offset of the data after rotation
-				MOV CX,16
-COPYCOLLDATA0:	MOV AL,[BX]
-				MOV [DI],AL
-				INC BX
-				INC DI
-				LOOP COPYCOLLDATA0
-				CALL CheckCollision
-				CMP AL,1
-				POPA
-				RET
+					PUSHA
+					DEC BX						;SI Points to PieceID
+					ADD DI,CX					;DI Points to the data after applying the rotation
+					PUSH DI					;Stack holds temporarily offset of the data after rotation
+					MOV DI,offset collisionPieceId	;DI = collisionPieceID
+					MOV CX,4
+COPYCOLL0:			MOV AL,[BX]
+					MOV [DI],AL
+					INC BX
+					INC DI
+					LOOP COPYCOLL0
+					ADD BX,16D
+					ADD DI,16D
+					MOV AL,[BX]
+					MOV [DI],AL
+					SUB DI,16D
+					POP BX			;BX holds offset of the data after rotation
+					MOV CX,16
+COPYCOLLDATA0:		MOV AL,[BX]
+					MOV [DI],AL
+					INC BX
+					INC DI
+					LOOP COPYCOLLDATA0
+					CALL CheckCollision
+					CMP AL,1
+					POPA
+					RET
 RotationCollision	ENDP
 ;---------------------------
 ;Shifts all the line up from Y = 0:14	 and X = 0:9
@@ -2039,46 +2048,46 @@ CopyNextPieceData	ENDP
 ;@param			SI: screenId: 0 for left, 4 for right
 ;@return		none
 DrawNextPiece		PROC	NEAR
-		PUSHA
-		MOV BX, tempNextPieceOffset
-		MOV DI, BX						;Load the piece 4x4 string address in pieceData
-		ADD DI,	4						;Go to the string data to put in DI
-		MOV CX, 0D						;iterate over the 16 cells of the piece
-		;if the piece has color !black, draw it with it's color
-		;cell location is:
-		;cell_x = orig_x + id%4
-		;cell_y = orig_y + id/4
+					PUSHA
+					MOV BX, tempNextPieceOffset
+					MOV DI, BX						;Load the piece 4x4 string address in pieceData
+					ADD DI,	4						;Go to the string data to put in DI
+					MOV CX, 0D						;iterate over the 16 cells of the piece
+					;if the piece has color !black, draw it with it's color
+					;cell location is:
+					;cell_x = orig_x + id%4
+					;cell_y = orig_y + id/4
 DRAWPIECELOPX1:			
-		MOV DL, [DI]					;copy the byte of color of current cell into DL
-		CMP DL, 0D						;check if color of current piece block is black
-		JZ	 DRAWPIECEISBLACK1
-		
-		PUSH CX
-		
-		MOV AX, CX
-		MOV CL, 4D
-		DIV CL						;AH = id%4, AL = id/4
-		MOV CX, 0
-		MOV DX, 0
-		MOV CL, 12				;load selected piece X into CL
-		MOV DL, 2				;load selected piece Y into DL
-		ADD CL, AH					;CX = orig_x + id%4
-		ADD DL, AL					;DX = orig_y + id/4
-		
-		MOV AL, [DI]
+					MOV DL, [DI]					;copy the byte of color of current cell into DL
+					CMP DL, 0D						;check if color of current piece block is black
+					JZ	 DRAWPIECEISBLACK1
+					
+					PUSH CX
+					
+					MOV AX, CX
+					MOV CL, 4D
+					DIV CL						;AH = id%4, AL = id/4
+					MOV CX, 0
+					MOV DX, 0
+					MOV CL, 12				;load selected piece X into CL
+					MOV DL, 2				;load selected piece Y into DL
+					ADD CL, AH					;CX = orig_x + id%4
+					ADD DL, AL					;DX = orig_y + id/4
+					
+					MOV AL, [DI]
 
-		CALL DrawBlockClr
-		
-		POP  CX
+					CALL DrawBlockClr
+					
+					POP  CX
 DRAWPIECEISBLACK1:		
-		INC DI
-		INC CX
-		CMP CX, 16D
-		JNZ DRAWPIECELOPX1
+					INC DI
+					INC CX
+					CMP CX, 16D
+					JNZ DRAWPIECELOPX1
 
 
-		POPA
-		RET
+					POPA
+					RET
 DrawNextPiece		ENDP
 ;---------------------------
 ;---------------------------
@@ -2086,44 +2095,44 @@ DrawNextPiece		ENDP
 ;@param			SI: screenId: 0 for left, 4 for right
 ;@return		none
 DeleteNextPiece		PROC	NEAR
-		PUSHA
-		MOV BX, tempNextPieceOffset
-		MOV DI, BX						;Load the piece 4x4 string address in pieceData
-		ADD DI,	4						;Go to the string data to put in DI
-		MOV CX, 0D						;iterate over the 16 cells of the piece
-		;if the piece has color !black, draw it with black
-		;cell location is:
-		;cell_x = orig_x + id%4
-		;cell_y = orig_y + id/4
+					PUSHA
+					MOV BX, tempNextPieceOffset
+					MOV DI, BX						;Load the piece 4x4 string address in pieceData
+					ADD DI,	4						;Go to the string data to put in DI
+					MOV CX, 0D						;iterate over the 16 cells of the piece
+					;if the piece has color !black, draw it with black
+					;cell location is:
+					;cell_x = orig_x + id%4
+					;cell_y = orig_y + id/4
 LOPX1:			
-		MOV DL, [DI]					;copy the byte of color of current cell into DL
-		CMP DL, 0D						;check if color of current piece block is black
-		JZ 	ISBLACK1
-		
-		PUSH CX
-		
-		MOV AX, CX
-		MOV CL, 4D
-		DIV CL						;AH = id%4, AL = id/4
-		MOV CX, 0
-		MOV DX, 0
-		MOV CL, 12				;load selected piece X into CL
-		MOV DL, 2				;load selected piece Y into DL
-		ADD CL, AH					;CX = orig_x + id%4
-		ADD DL, AL					;DX = orig_y + id/4
-		
-		MOV AL, 0
+					MOV DL, [DI]					;copy the byte of color of current cell into DL
+					CMP DL, 0D						;check if color of current piece block is black
+					JZ 	ISBLACK1
+					
+					PUSH CX
+					
+					MOV AX, CX
+					MOV CL, 4D
+					DIV CL						;AH = id%4, AL = id/4
+					MOV CX, 0
+					MOV DX, 0
+					MOV CL, 12				;load selected piece X into CL
+					MOV DL, 2				;load selected piece Y into DL
+					ADD CL, AH					;CX = orig_x + id%4
+					ADD DL, AL					;DX = orig_y + id/4
+					
+					MOV AL, 0
 
-		CALL DrawBlockClr
-		
-		POP  CX
+					CALL DrawBlockClr
+					
+					POP  CX
 ISBLACK1:		
-		INC CX
-		INC DI
-		CMP CX, 16D
-		JNZ LOPX1
-		POPA
-		RET
+					INC CX
+					INC DI
+					CMP CX, 16D
+					JNZ LOPX1
+					POPA
+					RET
 DeleteNextPiece		ENDP
 ;---------------------------
 ;This procedure checks if a player should get a powerup now, if he should, then add a random powerup to him
@@ -2282,5 +2291,14 @@ UnfreezeRotation		PROC	NEAR
 		RET
 
 UnfreezeRotation		ENDP
+;---------------------------
+ChangePiece			PROC 	NEAR
+					PUSHA
+					CALL GetTempPiece
+					CALL DeletePiece
+					CALL GenerateRandomPiece
+					POPA
+					RET
+ChangePiece			ENDP
 ;---------------------------
 END     MAIN
