@@ -113,6 +113,23 @@ RightChangePieceText		DB "00"
 RightChangePieceStringLocX	EQU 107
 RightChangePieceStringLocY	EQU RightChangePieceLocY+1
 
+InsertTwoLinesStringLength		EQU 12
+InsertTwoLinesString			DB	"Insert Lines"
+LeftInsertTwoLinesLocX			EQU 45
+LeftInsertTwoLinesLocY			EQU 25
+RightInsertTwoLinesLocX		EQU 107
+RightInsertTwoLinesLocY		EQU 25
+
+LeftInsertTwoLinesTextLength	EQU 2
+LeftInsertTwoLinesText			DB "00"
+LeftInsertTwoLinesStringLocX	EQU 45
+LeftInsertTwoLinesStringLocY	EQU LeftInsertTwoLinesLocY+1
+
+RightInsertTwoLinesTextLength 	EQU 2
+RightInsertTwoLinesText			DB "00"
+RightInsertTwoLinesStringLocX	EQU 107
+RightInsertTwoLinesStringLocY	EQU RightInsertTwoLinesLocY+1
+
 
 DeltaScore	EQU 1
 
@@ -205,7 +222,7 @@ leftPowerupFreezeCount					DB  0
 leftPowerupSpeedUpCount					DB  0
 leftPowerupRemoveLinesCount				DB	0
 leftPowerupChangePieceCount				DB 	0
-leftPowerup5Count			DB 	0
+leftPowerupInsertTwoLinesCount			DB 	0
 leftPieceRotationLock 		DB 0 	;lock the rotation of the piece 0:locked 1:free
 
 rightPieceId				DB	?			;contains the ID of the current piece
@@ -219,7 +236,7 @@ rightPowerupFreezeCount					DB 	0
 rightPowerupSpeedUpCount				DB	0
 rightPowerupRemoveLinesCount			DB	0
 rightPowerupChangePieceCount			DB	0
-rightPowerup5Count			DB	0
+rightPowerupInsertTwoLinesCount			DB	0
 rightPieceRotationLock	DB 0	;lock the rotation of the piece 0:locked 1:free
 
 
@@ -461,6 +478,7 @@ GetBlockClr	PROC	NEAR							;XXXXXXXXX - NEEDS TESTING
 	PUSH CX
 	PUSH DX
 	PUSH BX
+	PUSH SI
 	MOV AX, CX		;top left of (X,Y) block is BLOCKSIZE*X + gridTopX
 	MOV BL, BLOCKSIZE	
 	MUL BL
@@ -480,6 +498,7 @@ GetBlockClr	PROC	NEAR							;XXXXXXXXX - NEEDS TESTING
 	INT 10H
 	POP BX
 
+	POP SI
 	POP BX
 	POP DX
 	POP CX
@@ -1024,8 +1043,13 @@ LeftPowerup4:
 
 		JMP BreakParseInput
 LeftPowerup5:
-		CMP AH, leftRotCode
+		CMP AH, LeftPower5
 		JNZ RightPowerup1
+
+		MOV SI,0
+		CALL InsertTwoLines
+		SUB leftPowerupInsertTwoLinesCount,1
+		CALL UpdatePowerupsScore
 
 		JMP BreakParseInput
 
@@ -1035,7 +1059,7 @@ RightPowerup1:
 
 		MOV SI, 4
 		CALL FreezeRotation
-		SUB leftPowerupFreezeCount, 1
+		SUB rightPowerupFreezeCount, 1
 		CALL UpdatePowerupsScore
 
 		JMP BreakParseInput
@@ -1070,9 +1094,13 @@ RightPowerup4:
 
 		JMP BreakParseInput
 RightPowerup5:
-		CMP AH, rightRotCode
+		CMP AH, RightPower5
 		JNZ BreakParseInput
 
+		MOV SI,4
+		CALL InsertTwoLines
+		SUB rightPowerupInsertTwoLinesCount,1
+		CALL UpdatePowerupsScore
 
 		JMP BreakParseInput
 
@@ -1343,7 +1371,7 @@ GenerateRandomNumber	ENDP
 ;---------------------------
 ;Procedure to check for collision before rotation
 ;@param			CX:Added number to go the correct piece, SI:0 for left , 4 for right
-;@				ZF:if 0 then collided ,1 clear to rotate
+;@return		ZF:if 0 then collided ,1 clear to rotate
 RotationCollision	PROC	NEAR
 					PUSHA
 					DEC BX						;SI Points to PieceID
@@ -1381,6 +1409,7 @@ ShiftLinesUp	PROC	NEAR
 				PUSHA
 
 				CALL GetTempPiece
+				CALL setCollisionPiece
 				CALL DeletePiece		;we need to remove the piece before shifting, to avoid shifting the piece itself
 
 				MOV DX, 0D				;initialize dx at 0
@@ -1400,6 +1429,17 @@ SHIFTUPLOOPX:
 				CMP DX, FRAMEHEIGHT-1	;check if Y is = 15
 				JNZ SHIFTUPLOOPY
 
+				CALL CheckCollisionWithBlocks
+				CMP AL, 1
+				JNZ ShiftUpNoCollision
+
+				MOV AL, 1
+				CALL GetTempPiece
+				MOV BX, tempPieceOffset
+				ADD BX, 3
+				SUB [BX], AL
+
+ShiftUpNoCollision:
 				CALL DrawPiece
 
 				POPA
@@ -1457,6 +1497,8 @@ INSERTLINELOOPX:						;loop from x=0:10 and draw gray block
 				INC CX
 				CMP CX, FRAMEWIDTH		
 				JNZ INSERTLINELOOPX
+
+
 
 				POPA
 				RET
@@ -1528,7 +1570,7 @@ CheckLineClear	ENDP
 ;---------------------------
 ;Procedure to wait for a key to be pressed
 ;@param			none
-;@				AL(ascii-code)  AH(scancode)
+;@return 		AL(ascii-code)  AH(scancode)
 Wait4Key		PROC 	NEAR
 				MOV AH,00H 
 				INT 16H
@@ -1537,7 +1579,7 @@ Wait4Key		ENDP
 ;---------------------------
 ;Procedure to get message from user at cursor position
 ;@param			none
-;@				none
+;@return		none
 GetMessage		PROC 	NEAR
 				MOV AH,0AH 
 				INT 21H
@@ -1546,7 +1588,7 @@ GetMessage		ENDP
 ;---------------------------
 ;Procedure to set cursor position 
 ;@param			DH (Y)  DL(X)
-;@				none
+;@return		none
 MoveCursor		PROC 	NEAR
 				MOV AH,02H          ;Move Cursor
 				XOR BH,BH
@@ -1556,7 +1598,7 @@ MoveCursor		ENDP
 ;---------------------------
 ;Procedure to show char at cursor position  
 ;@param			AL(ascii-code) BL(col)
-;@				none
+;@return		none
 PrintChar		PROC 	NEAR
 				MOV AH, 09H									
 				XOR BH,BH ; VIDEO PAGE = 0 
@@ -1568,7 +1610,7 @@ PrintChar		ENDP
 ;Procedure to show message  
 ;@param			BP (offset of string) CX(size)
 ;				DH (Y)  DL(X)
-;@				none
+;@return		none
 PrintMessage	PROC 	NEAR
 				MOV AH, 13H ; WRITE THE STRING
 				MOV AL, 01H; ATTRIBUTE IN BL, MOVE CURSOR TO THAT POSITION
@@ -1580,7 +1622,7 @@ PrintMessage	ENDP
 ;---------------------------
 ;Procedure to show menu on opening the game 
 ;@param			none
-;@				none
+;@return		none
 DisplayMenu 	PROC     NEAR
 				MOV BP, OFFSET Menu11 ; ES: BP POINTS TO THE TEXT
 				MOV CX,M11sz ;SIZE OF STRING
@@ -1827,6 +1869,14 @@ DrawGUIText		PROC	NEAR
 				mov bx, 4d
 				int 10h
 
+				mov ah, 13h
+				mov cx, InsertTwoLinesStringLength
+				mov dh, LeftInsertTwoLinesLocY
+				mov dl, LeftInsertTwoLinesLocX
+				lea bp, InsertTwoLinesString
+				mov bx, 4d
+				int 10h
+
 				;render right powerups
 
 				mov ah, 13h
@@ -1858,6 +1908,14 @@ DrawGUIText		PROC	NEAR
 				mov dh, RightChangePieceLocY
 				mov dl, RightChangePieceLocX
 				lea bp, ChangePieceString
+				mov bx, 4d
+				int 10h
+
+				mov ah, 13h
+				mov cx, InsertTwoLinesStringLength
+				mov dh, RightInsertTwoLinesLocY
+				mov dl, RightInsertTwoLinesLocX
+				lea bp, InsertTwoLinesString
 				mov bx, 4d
 				int 10h
 
@@ -1932,6 +1990,15 @@ UpdatePowerupsScore	PROC	NEAR
 					LEA SI, rightChangePieceText
 					CALL ParseIntToString
 
+					MOV AL, leftPowerupInsertTwoLinesCount
+					LEA SI, LeftInsertTwoLinesText
+					CALL ParseIntToString
+
+					MOV AL, rightPowerupInsertTwoLinesCount
+					LEA SI, rightInsertTwoLinesText
+					CALL ParseIntToString
+
+
 					mov ah, 13h
 					mov cx, leftFreezeTextLength
 					mov dh, LeftFreezeStringLocY
@@ -1965,6 +2032,14 @@ UpdatePowerupsScore	PROC	NEAR
 					int 10h
 
 					mov ah, 13h
+					mov cx, leftInsertTwoLinesTextLength
+					mov dh, LeftInsertTwoLinesStringLocY
+					mov dl, LeftInsertTwoLinesStringLocX
+					lea bp, LeftInsertTwoLinesText
+					mov bx, 4d
+					int 10h
+
+					mov ah, 13h
 					mov cx, rightFreezeTextLength
 					mov dh, rightFreezeStringLocY
 					mov dl, rightFreezeStringLocX
@@ -1993,6 +2068,14 @@ UpdatePowerupsScore	PROC	NEAR
 					mov dh, rightChangePieceStringLocY
 					mov dl, rightChangePieceStringLocX
 					lea bp, rightChangePieceText
+					mov bx, 4d
+					int 10h
+
+					mov ah, 13h
+					mov cx, rightInsertTwoLinesTextLength
+					mov dh, rightInsertTwoLinesStringLocY
+					mov dl, rightInsertTwoLinesStringLocX
+					lea bp, rightInsertTwoLinesText
 					mov bx, 4d
 					int 10h
 
@@ -2089,7 +2172,6 @@ DRAWPIECEISBLACK1:
 					POPA
 					RET
 DrawNextPiece		ENDP
-;---------------------------
 ;---------------------------
 ;This procedure clears the current temp piece (used in changing direction or rotation)	;NEEDS TESTING
 ;@param			SI: screenId: 0 for left, 4 for right
@@ -2292,6 +2374,9 @@ UnfreezeRotation		PROC	NEAR
 
 UnfreezeRotation		ENDP
 ;---------------------------
+;This procedure changes the current piece of the player
+;@param				SI: 0 for left player, 4 for right player
+;@return			none
 ChangePiece			PROC 	NEAR
 					PUSHA
 					CALL GetTempPiece
@@ -2300,5 +2385,24 @@ ChangePiece			PROC 	NEAR
 					POPA
 					RET
 ChangePiece			ENDP
+;---------------------------
+;This procedure adds two lines at the opposite player
+;@param				SI: 0 for left player, 4 for right player
+;@return			none
+InsertTwoLines			PROC	NEAR
+					PUSHA
+					CMP SI, 0				;invert SI from 0 to 4 or from 4 to 0
+					JNZ	AddTwoLinesSIis4
+					MOV SI, 4
+					JMP AddTwoLinesBreak
+AddTwoLinesSIis4:
+					MOV SI, 0
+AddTwoLinesBreak:
+					CALL InsertLine			;insert two lines
+					CALL InsertLine
+
+					POPA
+					RET
+InsertTwoLines		ENDP
 ;---------------------------
 END     MAIN
