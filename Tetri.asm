@@ -31,9 +31,9 @@ RIGHTNEXTPIECELOCY	EQU 3
 SCORETEXTLENGTH		EQU 6
 SCORETEXT			DB	"Score:"
 LeftScoreLocX		EQU 23
-LeftScoreLocY		EQU 31
+LeftScoreLocY		EQU 33
 RightScoreLocX		EQU 87
-RightScoreLocY		EQU 31
+RightScoreLocY		EQU 33
 
 
 LeftScoreTextLength EQU 2
@@ -138,26 +138,81 @@ DeltaScore	EQU 1
 
 						;Tetris grid is 20X10, so each block is 20X20 pixels
 GAMELEFTSCRX        DW  100     ;top left corner X of left screen
-GAMELEFTSCRY        DW  30      ;top left corner Y of left screen
+GAMELEFTSCRY        DW  54      ;top left corner Y of left screen
 GAMERIGHTSCRX       DW  600     ;top left corner X of right screen
-GAMERIGHTSCRY       DW  30      ;top left corner Y of right screen
+GAMERIGHTSCRY       DW  54      ;top left corner Y of right screen
 
+LeftFrameTopWidth EQU  219
+LeftFrameTopHeight EQU 54
+LeftFrameTopFilename DB 'icetop.bin', 0
+LeftFrameTopX		 EQU 90
+LeftFrameTopY		 EQU 0
+LeftFrameTopFilehandle DW ?
+
+LeftFrameLeftWidth EQU  51
+LeftFrameLeftHeight EQU 426
+LeftFrameLeftFilename DB 'iceleft.bin', 0
+LeftFrameLeftX		 EQU 50
+LeftFrameLeftY		 EQU 54
+LeftFrameLeftFilehandle DW ?
+
+LeftFrameRightWidth EQU  43
+LeftFrameRightHeight EQU 426
+LeftFrameRightFilename DB 'iceright.bin', 0
+LeftFrameRightX		 EQU 298
+LeftFrameRightY		 EQU 54
+LeftFrameRightFilehandle DW ?
+
+LeftFrameBottomWidth EQU  197
+LeftFrameBottomHeight EQU 54
+LeftFrameBottomFilename DB 'icebot.bin', 0
+LeftFrameBottomX		 EQU 101
+LeftFrameBottomY		 EQU 451
+LeftFrameBottomFilehandle DW ?
+
+RightFrameTopWidth EQU  248
+RightFrameTopHeight EQU 53
+RightFrameTopFilename DB 'firetop.bin', 0
+RightFrameTopX		 EQU 576
+RightFrameTopY		 EQU 1
+RightFrameTopFilehandle DW ?
+
+RightFrameLeftWidth EQU  41
+RightFrameLeftHeight EQU 458
+RightFrameLeftFilename DB 'fireleft.bin', 0
+RightFrameLeftX		 EQU 561
+RightFrameLeftY		 EQU 54
+RightFrameLeftFilehandle DW ?
+
+RightFrameRightWidth EQU  49
+RightFrameRightHeight EQU 461
+RightFrameRightFilename DB 'firer.bin', 0
+RightFrameRightX		 EQU 797
+RightFrameRightY		 EQU 54
+RightFrameRightFilehandle DW ?
+
+RightFrameBottomWidth EQU  199
+RightFrameBottomHeight EQU 63
+RightFrameBottomFilename DB 'firebot.bin', 0
+RightFrameBottomX		 EQU 598
+RightFrameBottomY		 EQU 452
+RightFrameBottomFilehandle DW ?
+
+WideFrameWIDTH	EQU	250
+WideFrameHEIGHT EQU	60
+
+WideFrameData	DB	WideFrameHEIGHT*WideFrameWIDTH DUP(0)
+
+TallFrameWIDTH	EQU	60
+TallFrameHEIGHT EQU	465
+
+TallFrameData	DB	TallFrameHEIGHT*TallFrameWIDTH DUP(0)
 
 ;===========================================================================
 RightPlyLocX		EQU RightScoreLocX-10
 RightPlyLocY		EQU RightScoreLocY
 LeftPlyLocX			EQU LeftScoreLocX-10
 LeftPlyLocY			EQU LeftScoreLocY
-
-LogoWidth EQU 320D
-LogoHeight EQU 200D
-
-Logofilename DB 'Logo.bin', 0
-
-LogoFilehandle DW ?
-
-chickenData DB LogoWidth * LogoHeight dup(00)
-
 
 Menu11 DB "Please enter your name:"
 M11sz	EQU 23
@@ -308,7 +363,7 @@ Seconds						DB 99			;Contains the previous second value
 GameFlag					DB 1			;Status of the game
 
 GRAYBLOCKCLR				EQU	 8		;color of gray solid blocks
-.CODE
+.CODE 
 ;---------------------------        
 MAIN    PROC    FAR
 		MOV AX, @DATA   ;SETUP DATA ADDRESS
@@ -319,7 +374,7 @@ MAIN    PROC    FAR
 		MOV AL, 13H ; Mode 13h
 		INT 10H 
  
-		CALL DisplayMenu 
+		;CALL DisplayMenu 
 ;-----------------------------------------------
 
 		;MOV AH, 00H       ;PREPARE GFX MODE
@@ -409,6 +464,8 @@ DRAWVER:
 	CMP SI, 8				;check if loop ran twice
 	JNE	DRAWFRAME
 
+	CALL DrawLeftBorder
+	CALL DrawRightBorder
 	RET
 DrawGameScr ENDP
 ;---------------------------
@@ -2454,7 +2511,7 @@ ChangePiece			ENDP
 ;This procedure adds two lines at the opposite player
 ;@param				SI: 0 for left player, 4 for right player
 ;@return			none
-InsertTwoLines			PROC	NEAR
+InsertTwoLines		PROC	NEAR
 					PUSHA
 					CMP SI, 0				;invert SI from 0 to 4 or from 4 to 0
 					JNZ	AddTwoLinesSIis4
@@ -2470,4 +2527,501 @@ AddTwoLinesBreak:
 					RET
 InsertTwoLines		ENDP
 ;---------------------------
+; OpenFile 	PROC 	NEAR
+
+;     ; Open file
+
+; 	;JNC SUCCESS
+; 	;MOV AH, 4CH
+; 	;INT 21H
+; ;SUCCESS:
+
+;     MOV AH, 3Dh
+;     MOV AL, 0 ; read only
+;     LEA DX, LeftFrameTopFilename
+;     INT 21h
+;     MOV [LeftFrameTopFilehandle], AX
+
+	; MOV AH, 3Dh
+    ; MOV AL, 0 ; read only
+    ; LEA DX, LeftFrameLeftFilename
+    ; INT 21h
+    ; MOV [LeftFrameLeftFilehandle], AX
+
+; 	MOV AH, 3Dh
+;     MOV AL, 0 ; read only
+;     LEA DX, LeftFrameRightFilename
+;     INT 21h
+;     MOV [LeftFrameRightFilehandle], AX
+
+; 	MOV AH, 3Dh
+;     MOV AL, 0 ; read only
+;     LEA DX, LeftFrameBottomFilename
+;     INT 21h
+;     MOV [LeftFrameBottomFilehandle], AX
+
+; 	; MOV AH, 3Dh
+;     ; MOV AL, 0 ; read only
+;     ; LEA DX, rightFrameTopFilename
+;     ; INT 21h
+;     ; MOV [rightFrameTopFilehandle], AX
+
+; 	; MOV AH, 3Dh
+;     ; MOV AL, 0 ; read only
+;     ; LEA DX, rightFrameLeftFilename
+;     ; INT 21h
+;     ; MOV [rightFrameLeftFilehandle], AX
+
+; 	; MOV AH, 3Dh
+;     ; MOV AL, 0 ; read only
+;     ; LEA DX, rightFrameRightFilename
+;     ; INT 21h
+;     ; MOV [rightFrameRightFilehandle], AX
+
+; 	; MOV AH, 3Dh
+;     ; MOV AL, 0 ; read only
+;     ; LEA DX, rightFrameBottomFilename
+;     ; INT 21h
+;     ; MOV [rightFrameBottomFilehandle], AX
+   
+   
+;     RET
+; OpenFile 	ENDP
+; ;---------------------------
+; ReadData 	PROC	NEAR
+;     MOV AH,3Fh
+;     MOV BX, [LeftFrameTopFilehandle]
+;     MOV CX, leftFrameTopWidth*leftFrameTopHeight ; number of bytes to read
+;     LEA DX, leftFrameTopData
+;     INT 21h
+
+    ; MOV AH,3Fh
+    ; MOV BX, [LeftFrameLeftFilehandle]
+    ; MOV CX, leftFrameLeftWidth*leftFrameLeftHeight ; number of bytes to read
+    ; LEA DX, leftFrameLeftData
+    ; INT 21h
+
+;     MOV AH,3Fh
+;     MOV BX, [LeftFrameRightFilehandle]
+;     MOV CX, leftFrameRightWidth*leftFrameRightHeight ; number of bytes to read
+;     LEA DX, leftFrameRightData
+;     INT 21h
+
+;     MOV AH,3Fh
+;     MOV BX, [LeftFrameBottomFilehandle]
+;     MOV CX, leftFrameBottomWidth*leftFrameBottomHeight ; number of bytes to read
+;     LEA DX, leftFrameBottomData
+;     INT 21h
+
+; 	; MOV AH,3Fh
+;     ; MOV BX, [rightFrameTopFilehandle]
+;     ; MOV CX, rightFrameTopWidth*rightFrameTopHeight ; number of bytes to read
+;     ; LEA DX, rightFrameTopData
+;     ; INT 21h
+
+;     ; MOV AH,3Fh
+;     ; MOV BX, [rightFrameLeftFilehandle]
+;     ; MOV CX, rightFrameLeftWidth*rightFrameLeftHeight ; number of bytes to read
+;     ; LEA DX, rightFrameLeftData
+;     ; INT 21h
+
+;     ; MOV AH,3Fh
+;     ; MOV BX, [rightFrameRightFilehandle]
+;     ; MOV CX, rightFrameRightWidth*rightFrameRightHeight ; number of bytes to read
+;     ; LEA DX, rightFrameRightData
+;     ; INT 21h
+
+;     ; MOV AH,3Fh
+;     ; MOV BX, [rightFrameBottomFilehandle]
+;     ; MOV CX, rightFrameBottomWidth*rightFrameBottomHeight ; number of bytes to read
+;     ; LEA DX, rightFrameBottomData
+;     ; INT 21h
+
+
+;     RET
+; ReadData	ENDP 
+; ;---------------------------
+; CloseFile 	PROC	NEAR
+; 	MOV AH, 3Eh
+; 	MOV BX, [leftFrameTopFilehandle]
+; 	INT 21h
+
+	; MOV AH, 3Eh
+	; MOV BX, [leftFrameLeftFilehandle]
+	; INT 21h
+
+; 	MOV AH, 3Eh
+; 	MOV BX, [leftFrameRightFilehandle]
+; 	INT 21h
+
+; 	MOV AH, 3Eh
+; 	MOV BX, [leftFrameBottomFilehandle]
+; 	INT 21h
+
+; 	; MOV AH, 3Eh
+; 	; MOV BX, [rightFrameTopFilehandle]
+; 	; INT 21h
+
+; 	; MOV AH, 3Eh
+; 	; MOV BX, [rightFrameLeftFilehandle]
+; 	; INT 21h
+
+; 	; MOV AH, 3Eh
+; 	; MOV BX, [rightFrameRightFilehandle]
+; 	; INT 21h
+
+; 	; MOV AH, 3Eh
+; 	; MOV BX, [rightFrameBottomFilehandle]
+; 	; INT 21h
+
+
+; 	RET
+; CloseFile 	ENDP
+;---------------------------
+;
+;
+DrawLeftBorder	PROC	NEAR
+
+	;------------ice bottom-------------
+
+	;open file
+	MOV AH, 3Dh
+	MOV AL, 0 ; read only
+	LEA DX, LeftFrameBottomFilename
+	INT 21h
+	MOV [LeftFrameBottomFilehandle], AX
+
+	;read file
+	MOV AH,3Fh
+	MOV BX, [LeftFrameBottomFilehandle]
+	MOV CX, leftFrameBottomWidth*leftFrameBottomHeight ; number of bytes to read
+	LEA DX, WideFrameData
+	INT 21h
+
+	;close file
+	MOV AH, 3Eh
+	MOV BX, [leftFrameBottomFilehandle]
+	INT 21h
+
+	;drawing ice Bottom
+
+	LEA BX, WideFrameData ; BL contains index at the current drawn pixel
+	
+	MOV CX, leftFrameBottomX
+	MOV DX, leftFrameBottomY
+	MOV AH, 0ch
+
+	drawIceBottom:
+		MOV AL,[BX]
+		INT 10h 
+		INC CX
+		INC BX
+		CMP CX, leftFrameBottomWidth + leftFrameBottomX
+	JNE drawIceBottom 
+		MOV CX , leftFrameBottomX
+		INC DX
+		CMP DX, leftFrameBottomHeight + leftFrameBottomY
+	JNE drawIceBottom
+
+
+	;------------ice top-------------
+
+	;open file
+	MOV AH, 3Dh
+	MOV AL, 0 ; read only
+	LEA DX, LeftFrameTopFilename
+	INT 21h
+	MOV [LeftFrameTopFilehandle], AX
+
+	;read file
+	MOV AH,3Fh
+	MOV BX, [LeftFrameTopFilehandle]
+	MOV CX, leftFrameTopWidth*leftFrameTopHeight ; number of bytes to read
+	LEA DX, WideFrameData
+	INT 21h
+
+	;close file
+	MOV AH, 3Eh
+	MOV BX, [leftFrameTopFilehandle]
+	INT 21h
+
+	;draw ice top
+	LEA BX, WideFrameData ; BL contains index at the current drawn pixel
+	MOV CX, leftFrameTopX
+	MOV DX, leftFrameTopY
+	MOV AH, 0ch
+	drawIceTop:
+		MOV AL,[BX]
+		INT 10h 
+		INC CX
+		INC BX
+		CMP CX, leftFrameTopWidth + leftFrameTopX
+	JNE drawIceTop 
+		
+		MOV CX , leftFrameTopX
+		INC DX
+		CMP DX, leftFrameTopHeight + leftFrameTopY
+	JNE drawIceTop
+
+	;------------ice left-------------
+
+	;open file
+    MOV AH, 3Dh
+    MOV AL, 0 ; read only
+    LEA DX, LeftFrameLeftFilename
+    INT 21h
+     
+    MOV [LeftFrameLeftFilehandle], AX
+
+	;read file
+    MOV AH,3Fh
+    MOV BX, [LeftFrameLeftFilehandle]
+    MOV CX, leftFrameLeftWidth*leftFrameLeftHeight ; number of bytes to read
+    LEA DX, TallFrameData
+    INT 21h
+
+	;close file
+	MOV AH, 3Eh
+	MOV BX, [leftFrameLeftFilehandle]
+	INT 21h
+
+	;drawing ice Left
+	LEA BX, TallFrameData ; BL contains index at the current drawn pixel
+	MOV CX, leftFrameLeftX
+	MOV DX, leftFrameLeftY
+	MOV AH, 0ch
+	
+	drawIceLeft:
+		MOV AL,[BX]
+		INT 10h 
+		INC CX
+		INC BX
+		CMP CX, leftFrameLeftWidth + leftFrameLeftX
+	JNE drawIceLeft 
+		
+		MOV CX , leftFrameLeftX
+		INC DX
+		CMP DX, leftFrameLeftHeight + leftFrameLeftY
+	JNE drawIceLeft
+	
+	;------------ice right-------------
+
+	;open file
+	MOV AH, 3Dh
+	MOV AL, 0 ; read only
+	LEA DX, LeftFrameRightFilename
+	INT 21h
+	MOV [LeftFrameRightFilehandle], AX
+
+	;read file
+	MOV AH,3Fh
+	MOV BX, [LeftFrameRightFilehandle]
+	MOV CX, leftFrameRightWidth*leftFrameRightHeight ; number of bytes to read
+	LEA DX, TallFrameData
+	INT 21h
+
+	;close file
+	MOV AH, 3Eh
+	MOV BX, [leftFrameRightFilehandle]
+	INT 21h
+	
+	;drawing ice Right
+	LEA BX, TallFrameData	 ; BL contains index at the current drawn pixel
+	MOV CX, leftFrameRightX
+	MOV DX, leftFrameRightY
+	MOV AH, 0ch
+
+	drawIceRight:
+		MOV AL,[BX]
+		INT 10h 
+		INC CX
+		INC BX
+		CMP CX, leftFrameRightWidth + leftFrameRightX
+	JNE drawIceRight 
+		
+		MOV CX , leftFrameRightX
+		INC DX
+		CMP DX, leftFrameRightHeight + leftFrameRightY
+	JNE drawIceRight
+
+	;------------done-------------
+
+				RET
+DrawLeftBorder	ENDP
+;-------------------------
+DrawRightBorder	PROC	NEAR
+
+	;------------fire top-------------
+
+	;open file
+	MOV AH, 3Dh
+	MOV AL, 0 ; read only
+	LEA DX, RightFrameTopFilename
+	INT 21h
+	MOV [RightFrameTopFilehandle], AX
+
+	;read file
+	MOV AH,3Fh
+	MOV BX, [RightFrameTopFilehandle]
+	MOV CX, RightFrameTopWidth*RightFrameTopHeight ; number of bytes to read
+	LEA DX, WideFrameData
+	INT 21h
+
+	;close file
+	MOV AH, 3Eh
+	MOV BX, [RightFrameTopFilehandle]
+	INT 21h
+
+	;draw fire top
+	LEA BX, WideFrameData ; BL contains index at the current drawn pixel
+	MOV CX, RightFrameTopX
+	MOV DX, RightFrameTopY
+	MOV AH, 0ch
+	drawfireTop:
+		MOV AL,[BX]
+		INT 10h 
+		INC CX
+		INC BX
+		CMP CX, RightFrameTopWidth + RightFrameTopX
+	JNE drawfireTop 
+		
+		MOV CX , RightFrameTopX
+		INC DX
+		CMP DX, RightFrameTopHeight + RightFrameTopY
+	JNE drawfireTop
+
+	;CLEAR BUFFER
+
+	;CALL ClearWideBuffer
+
+	;------------fire bottom-------------
+
+	;open file
+	MOV AH, 3Dh
+	MOV AL, 0 ; read only
+	LEA DX, RightFrameBottomFilename
+	INT 21h
+	MOV [RightFrameBottomFilehandle], AX
+
+	;read file
+	MOV AH,3Fh
+	MOV BX, [RightFrameBottomFilehandle]
+	MOV CX, RightFrameBottomWidth*RightFrameBottomHeight ; number of bytes to read
+	LEA DX, WideFrameData
+	INT 21h
+
+	;close file
+	MOV AH, 3Eh
+	MOV BX, [RightFrameBottomFilehandle]
+	INT 21h
+
+	;drawing fire Bottom
+
+	LEA BX, WideFrameData ; BL contains index at the current drawn pixel
+	
+	MOV CX, RightFrameBottomX
+	MOV DX, RightFrameBottomY
+	MOV AH, 0ch
+
+	drawfireBottom:
+		MOV AL,[BX]
+		INT 10h 
+		INC CX
+		INC BX
+		CMP CX, RightFrameBottomWidth + RightFrameBottomX
+	JNE drawfireBottom 
+		MOV CX , RightFrameBottomX
+		INC DX
+		CMP DX, RightFrameBottomHeight + RightFrameBottomY
+	JNE drawfireBottom
+
+
+
+	;------------fire left-------------
+
+	;open file
+    MOV AH, 3Dh
+    MOV AL, 0 ; read only
+    LEA DX, RightFrameLeftFilename
+    INT 21h
+     
+    MOV [RightFrameLeftFilehandle], AX
+
+	;read file
+    MOV AH,3Fh
+    MOV BX, [RightFrameLeftFilehandle]
+    MOV CX, RightFrameLeftWidth*RightFrameLeftHeight ; number of bytes to read
+    LEA DX, TallFrameData
+    INT 21h
+
+	;close file
+	MOV AH, 3Eh
+	MOV BX, [RightFrameLeftFilehandle]
+	INT 21h
+
+	;drawing fire Left
+	LEA BX, TallFrameData ; BL contains index at the current drawn pixel
+	MOV CX, RightFrameLeftX
+	MOV DX, RightFrameLeftY
+	MOV AH, 0ch
+	
+
+	drawfireLeft:
+		MOV AL,[BX]
+		INT 10h 
+		INC CX
+		INC BX
+		CMP CX, RightFrameLeftWidth + RightFrameLeftX
+	JNE drawfireLeft 
+		
+		MOV CX , RightFrameLeftX
+		INC DX
+		CMP DX, RightFrameLeftHeight + RightFrameLeftY
+	JNE drawfireLeft
+	
+	;------------fire right-------------
+
+	;open file
+	MOV AH, 3Dh
+	MOV AL, 0 ; read only
+	LEA DX, RightFrameRightFilename
+	INT 21h
+	MOV [RightFrameRightFilehandle], AX
+
+	;read file
+	MOV AH,3Fh
+	MOV BX, [RightFrameRightFilehandle]
+	MOV CX, RightFrameRightWidth*RightFrameRightHeight ; number of bytes to read
+	LEA DX, TallFrameData
+	INT 21h
+
+	;close file
+	MOV AH, 3Eh
+	MOV BX, [RightFrameRightFilehandle]
+	INT 21h
+	
+	;drawing fire Right
+	LEA BX, TallFrameData	 ; BL contains index at the current drawn pixel
+	MOV CX, RightFrameRightX
+	MOV DX, RightFrameRightY
+	MOV AH, 0ch
+
+	drawfireRight:
+		MOV AL,[BX]
+		INT 10h 
+		INC CX
+		INC BX
+		CMP CX, RightFrameRightWidth + RightFrameRightX
+	JNE drawfireRight 
+		
+		MOV CX , RightFrameRightX
+		INC DX
+		CMP DX, RightFrameRightHeight + RightFrameRightY
+	JNE drawfireRight
+
+	;------------done-------------
+	
+				RET
+DrawRightBorder	ENDP
+;-------------------------
 END     MAIN
