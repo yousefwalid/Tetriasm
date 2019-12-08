@@ -146,16 +146,27 @@ RightPlyLocY		EQU 2
 LeftPlyLocX			EQU 5
 LeftPlyLocY			EQU 2
 
-LogoWidth EQU 320D
+LogoWidth EQU 297D
 LogoHeight EQU 200D
+
+LogostX				EQU 363D
+LogostY				EQU 100D
+LogofnX				EQU 660D
+LogofnY				EQU 300D	
+
 
 Logofilename DB 'Logo.bin', 0
 
 LogoFilehandle DW ?
 
-chickenData DB LogoWidth * LogoHeight dup(00)
+LogoData DB LogoWidth * LogoHeight dup(00)
 
-
+Logo1     DB "*To start chatting press F1"
+L1sz   	  EQU 27
+Logo2     DB "*To play tetris press F2"
+L2sz   	  EQU 24
+Logo3     DB "*To end the program press Esc"
+L3sz   	  EQU 29
 Menu11 DB "Please enter your name:"
 M11sz	EQU 23
 Menu12 DB "Press Enter Key to Continue"
@@ -205,8 +216,10 @@ rightPower5				DB	35h		;/ key
 
 ;General ScanCodes
 EnterCode  DB 1CH
+F1Code     DB 3BH
 F2Code     DB 3CH
 F10Code    DB 44H 
+EscCode	   DB 01H
 
 PowerupEveryPoint			EQU 4
 
@@ -311,12 +324,11 @@ MAIN    PROC    FAR
 		MOV AX, @DATA   ;SETUP DATA ADDRESS
 		MOV DS, AX      ;MOV DATA ADDRESS TO DS
 		MOV ES, AX
-		;call videomode13h
-		MOV AH, 00H ; Set video mode
-		MOV AL, 13H ; Mode 13h
-		INT 10H 
- 
-		;CALL DisplayMenu 
+		
+		CALL GetName
+		
+		MOV GameFlag, 1
+		CALL DisplayMenu 
 ;-----------------------------------------------
 
 		;MOV AH, 00H       ;PREPARE GFX MODE
@@ -351,7 +363,20 @@ GAMELP:
 		JNZ Finished
 		JMP GAMELP
 
-Finished:	MOV AH, 4CH     ;SETUP FOR EXIT
+Finished:	
+		mov     AX, 4F02H
+        mov     BX, 0105H
+        INT     10H
+		CALL DrawLogo
+		CALL Wait4Key
+		MOV AL,GameFlag
+		CMP AL,0 ;AL(GameFlag)
+		JNE	FireWon
+		
+		
+FireWon:
+		
+		MOV AX, 4C00H     ;SETUP FOR EXIT
 		INT 21H         ;RETURN CONTROL TO DOS
 MAIN    ENDP
 ;---------------------------
@@ -1655,25 +1680,155 @@ PrintChar		ENDP
 ;---------------------------
 ;Procedure to show message  
 ;@param			BP (offset of string) CX(size)
-;				DH (Y)  DL(X)
+;				BL(color) DH (Y)  DL(X)
 ;@return		none
 PrintMessage	PROC 	NEAR
 				MOV AH, 13H ; WRITE THE STRING
 				MOV AL, 01H; ATTRIBUTE IN BL, MOVE CURSOR TO THAT POSITION
-				MOV BL, 15 ;WHITE
 				XOR BH,BH ; VIDEO PAGE = 0
 				INT 10H
 				RET
-PrintMessage	ENDP
+PrintMessage	ENDP		
 ;---------------------------
-;Procedure to show menu on opening the game 
-;@param			none
+;Procedure to Open a binary file with image data in it
+;@param			none				
 ;@return		none
-DisplayMenu 	PROC     NEAR
+OpenLogoFile 	PROC 	NEAR
+
+			; Open file
+
+			MOV AH, 3Dh
+			MOV AL, 0 ; read only
+			LEA DX, Logofilename
+			INT 21h
+			
+			; you should check carry flag to make sure it worked correctly
+			; carry = 0 -> successful , file handle -> AX
+			; carry = 1 -> failed , AX -> error code
+			 
+			MOV [LogoFilehandle], AX
+			
+			RET
+
+OpenLogoFile 	ENDP
+;---------------------------
+;Procedure to read data from binary file opened
+;@param			none				
+;@return		none
+ReadLogoData	 PROC 	NEAR
+
+			MOV AH,3Fh
+			MOV BX, [LogoFilehandle]
+			MOV CX, LogoWidth*LogoHeight ; number of bytes to read
+			LEA DX, LogoData
+			INT 21h
+			RET
+ReadLogoData	 ENDP 
+;---------------------------
+;Procedure to Close the opened file
+;@param			none				
+;@return		none
+CloseLogoFile 	PROC 	NEAR
+			MOV AH, 3Eh
+			MOV BX, [LogoFilehandle]
+
+			INT 21h
+			RET
+CloseLogoFile 	ENDP
+;---------------------------
+;Procedure to Draw the logo 
+;@param			BX->array of pixels to draw	Make Sure in proper GFX mode			
+;@return		none
+DrawLogo 	PROC 	NEAR
+			CALL OpenLogoFile
+				
+			CALL ReadLogoData
+				
+			LEA BX , LogoData 
+			MOV CX,LogostX
+			MOV DX,LogostY
+			MOV AH,0ch ;Draw offset
+			
+drawLoop:
+			MOV AL,[BX]
+			CMP AL, 0FH
+			JZ SkipPixel
+			INT 10h 
+SkipPixel:	INC CX
+			INC BX
+			CMP CX,LogofnX
+			JNE drawLoop 
+			
+			MOV CX , LogostX
+			INC DX
+			CMP DX , LogofnY
+			JNE drawLoop
+			
+			CALL CloseLogoFile
+			
+			RET
+DrawLogo	ENDP			
+;---------------------------
+;Procedure to Draw the logo Menu
+;@param			none			
+;@return		none
+DrawLogoMenu 	PROC	NEAR
+			CALL DrawLogo
+			
+			MOV BP, OFFSET Logo1 ; ES: BP POINTS TO THE TEXT
+			MOV CX, L1sz
+			MOV DH, 20;ROW TO PLACE STRING
+			MOV DL, 51 ; COLUMN TO PLACE STRING
+			MOV BL, 01H ;Blue
+			CALL PrintMessage
+
+			MOV BP, OFFSET Logo2 ; ES: BP POINTS TO THE TEXT
+			MOV CX, L2sz
+			MOV DH, 22;ROW TO PLACE STRING
+			MOV DL, 52 ; COLUMN TO PLACE STRING
+			MOV BL, 04H ;Red
+			CALL PrintMessage
+
+			MOV BP, OFFSET Logo3 ; ES: BP POINTS TO THE TEXT
+			MOV CX, L3sz
+			MOV DH, 24;ROW TO PLACE STRING
+			MOV DL, 51 ; COLUMN TO PLACE STRING
+			MOV BL, 15 ;WHITE
+			CALL PrintMessage	
+			
+SelectMode: CALL Wait4Key
+			CMP AH,	EscCode
+			JNZ Check4game
+			
+			MOV AH, 00H ; Set video mode
+			MOV AL, 13H ; Mode 13h
+			INT 10H 
+			MOV AH, 4CH     ;SETUP FOR EXIT
+			INT 21H         ;RETURN CONTROL TO DOS
+			
+Check4game:	CMP AH,F2Code		
+			JNE SelectMode
+			
+			
+			
+			
+			RET
+DrawLogoMenu 	ENDP
+;---------------------------
+;Procedure to get player name
+;@param		none (proper GFX mode)
+;@			none
+GetName		PROC 	NEAR
+				;call videomode13h
+				MOV AH, 00H ; Set video mode
+				MOV AL, 13H ; Mode 13h
+				INT 10H 
+				
 				MOV BP, OFFSET Menu11 ; ES: BP POINTS TO THE TEXT
 				MOV CX,M11sz ;SIZE OF STRING
 				MOV DH, 6 ;ROW TO PLACE STRING
 				MOV DL, 10 ; COLUMN TO PLACE STRING
+				MOV BL, 15 ;WHITE
 				CALL PrintMessage
 
 				MOV DH, 11 ;ROW TO PLACE CURSOR
@@ -1689,6 +1844,7 @@ DisplayMenu 	PROC     NEAR
 				MOV CX, M12sz ; LENGTH OF THE STRING
 				MOV DH, 14 ;ROW TO PLACE STRING
 				MOV DL, 10 ; COLUMN TO PLACE STRING
+				MOV BL, 15 ;WHITE				
 				CALL PrintMessage
 
 				WAIT4Enter: CALL Wait4Key			
@@ -1704,6 +1860,7 @@ DisplayMenu 	PROC     NEAR
 				MOV CX,M11sz ;SIZE OF STRING
 				MOV DH, 6 ;ROW TO PLACE STRING
 				MOV DL, 10 ; COLUMN TO PLACE STRING
+				MOV BL, 15 ;WHITE				
 				CALL PrintMessage
 
 				MOV DH, 11 ;ROW TO PLACE CURSOR
@@ -1719,15 +1876,27 @@ DisplayMenu 	PROC     NEAR
 				MOV CX, M12sz ; LENGTH OF THE STRING
 				MOV DH, 14 ;ROW TO PLACE STRING
 				MOV DL, 10 ; COLUMN TO PLACE STRING
+				MOV BL, 15 ;WHITE
 				CALL PrintMessage
 							
 				WAIT4Enter2: CALL Wait4Key
 							 CMP AH,	EnterCode
-							 JNE WAIT4Enter2
-							
-							
-							
-				;Call ClearScreen
+							 JNE WAIT4Enter2			
+			RET
+GetName		ENDP			
+;---------------------------
+;Procedure to show menu on opening the game 
+;@param			none
+;@return		none
+DisplayMenu 	PROC     NEAR			
+				
+				;Game Logo Screen
+				MOV     AX, 4F02H
+				MOV     BX, 0105H
+				INT     10H
+												
+				CALL DrawLogoMenu			
+				
 				MOV AH, 00H ; Set video mode
 				MOV AL, 13H ; Mode 13h
 				INT 10H
@@ -1736,24 +1905,28 @@ DisplayMenu 	PROC     NEAR
 				MOV CX, NameSz
 				MOV DH, 6 ;ROW TO PLACE STRING
 				MOV DL, 6 ; COLUMN TO PLACE STRING
+				MOV BL, 15 ;WHITE
 				CALL PrintMessage
 					
 				MOV BP, OFFSET Menu21 ; ES: BP POINTS TO THE TEXT
 				MOV CX, M21sz ;SIZE OF STRING
 				MOV DH, 6 ;ROW TO PLACE STRING
 				MOV DL, 12 ; COLUMN TO PLACE STRING
+				MOV BL, 15 ;WHITE
 				CALL PrintMessage
 
 				MOV BP, OFFSET Player2 ; ES: BP POINTS TO THE TEXT
 				MOV CX, NameSz
 				MOV DH, 10 ;ROW TO PLACE STRING
 				MOV DL, 6 ; COLUMN TO PLACE STRING
+				MOV BL, 15 ;WHITE
 				CALL PrintMessage
 					
 				MOV BP, OFFSET Menu22 ; ES: BP POINTS TO THE TEXT
 				MOV CX, M22sz ;SIZE OF STRING
 				MOV DH, 10 ;ROW TO PLACE STRING
 				MOV DL, 12 ; COLUMN TO PLACE STRING
+				MOV BL, 15 ;WHITE
 				CALL PrintMessage
 
 				Wait4Ready: CALL Wait4Key
