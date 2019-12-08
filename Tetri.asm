@@ -204,6 +204,7 @@ RightFrameBottomFilehandle DW ?
 WideFrameWIDTH	EQU	250
 WideFrameHEIGHT EQU	60
 
+
 WideFrameData	DB	WideFrameHEIGHT*WideFrameWIDTH DUP(0)
 
 TallFrameWIDTH	EQU	60
@@ -212,11 +213,6 @@ TallFrameHEIGHT EQU	465
 TallFrameData	DB	TallFrameHEIGHT*TallFrameWIDTH DUP(0)
 
 ;===========================================================================
-RightPlyLocX		EQU 67
-RightPlyLocY		EQU 2
-LeftPlyLocX			EQU 5
-LeftPlyLocY			EQU 2
-
 LogoWidth EQU 297D
 LogoHeight EQU 200D
 
@@ -230,7 +226,10 @@ Logofilename DB 'Logo.bin', 0
 
 LogoFilehandle DW ?
 
-LogoData DB LogoWidth * LogoHeight dup(00)
+positionInLogoFile DW 0
+
+LogoData		DB  0
+
 RightPlyLocX		EQU RightScoreLocX-10
 RightPlyLocY		EQU RightScoreLocY
 LeftPlyLocX			EQU LeftScoreLocX-10
@@ -242,6 +241,9 @@ Logo2     DB "*To play tetris press F2"
 L2sz   	  EQU 24
 Logo3     DB "*To end the program press Esc"
 L3sz   	  EQU 29
+Logo4	  DB "*To main menu press Enter"
+L4sz	  EQU 25	
+
 Menu11 DB "Please enter your name:"
 M11sz	EQU 23
 Menu12 DB "Press Enter Key to Continue"
@@ -250,11 +252,22 @@ Menu21 DB ", Press F2 to play"
 M21sz	EQU 18
 Menu22 DB ", Press F10 to play"
 M22sz	EQU 19 
+
+GameEnded1 DB "Game ended"
+GE1sz		EQU 10
+GE1X 		EQU 53
+GE1Y		EQU 32
+		
+GameEnded2 DB "To continue press any key"
+GE2sz		EQU 25
+GE2X 		EQU 47
+GE2Y		EQU 34
+
 Ready  DB 'R'
 RPly1  DB  0
 RPly2  DB  0
-Separatedline DB  80 DUP ('=')
-PACE DB ' '
+
+SPACE DB ' '
 NAME1 DB 15
 Ply1Sz		DB ?
 Player1	DB 10 DUP(' ')
@@ -401,7 +414,32 @@ MAIN    PROC    FAR
 		MOV ES, AX
 		
 		CALL GetName
+NewGame:
+		MOV rightPieceSpeed , 1			;contains the falling speed of the right piece
+		MOV Player2Score , 0
+		MOV rightPowerupFreezeCount	, 0
+		MOV rightPowerupSpeedUpCount , 0
+		MOV rightPowerupRemoveLinesCount , 0
+		MOV rightPowerupChangePieceCount , 0
+		MOV	rightPowerupInsertTwoLinesCount	, 0
+		MOV	rightPieceRotationLock ,0
 		
+		MOV leftPieceSpeed , 1			;contains the falling speed of the left piece
+		MOV Player1Score, 0			;score of first player
+		MOV leftPowerupFreezeCount	,  0
+		MOV leftPowerupSpeedUpCount	,  0
+		MOV leftPowerupRemoveLinesCount	,0
+		MOV leftPowerupChangePieceCount	, 	0
+		MOV leftPowerupInsertTwoLinesCount	,	0
+		MOV leftPieceRotationLock ,0
+		
+		MOV RPly1,0
+		MOV Rply2,0
+		
+		MOV collisionPieceSpeed	, 1
+		
+		MOV PositionInLogoFile,0
+		MOV Seconds,99		
 		MOV GameFlag, 1
 		CALL DisplayMenu 
 ;-----------------------------------------------
@@ -438,21 +476,14 @@ GAMELP:
 		JNZ Finished
 		JMP GAMELP
 
-Finished:	
+Finished:
+		CALL GameEnded
 		mov     AX, 4F02H
         mov     BX, 0105H
         INT     10H
-		CALL DrawLogo
-		CALL Wait4Key
-		MOV AL,GameFlag
-		CMP AL,0 ;AL(GameFlag)
-		JNE	FireWon
+		CALL 	EndGameMenu
+		JMP NewGame
 		
-		
-FireWon:
-		
-		MOV AX, 4C00H     ;SETUP FOR EXIT
-		INT 21H         ;RETURN CONTROL TO DOS
 MAIN    ENDP
 ;---------------------------
 ;This PROC draws the screens of the two players given the parameters in data segment
@@ -1014,8 +1045,7 @@ ExitGame:
 		JNZ LeftRotKey
 
 		;------ this should be changed to return to menu instead
-		MOV AH, 4CH
-		INT 21H
+		CALL EndGame
 
 		JMP BreakParseInput
 LeftRotKey:
@@ -1725,6 +1755,18 @@ CHECKLINESKIPRMV:
 				RET
 CheckLineClear	ENDP
 ;---------------------------
+;Procedure to End Game
+;@param			none
+;@return		none
+EndGame		PROC 	NEAR
+			;Change to Text MODE
+			MOV AH,0          
+			MOV AL,03h
+			INT 10h 
+			MOV AX, 4C00H     ;SETUP FOR EXIT
+			INT 21H         ;RETURN CONTROL TO DOS
+EndGame		ENDP
+;---------------------------
 ;Procedure to wait for a key to be pressed
 ;@param			none
 ;@return 		AL(ascii-code)  AH(scancode)
@@ -1787,11 +1829,6 @@ OpenLogoFile 	PROC 	NEAR
 			MOV AL, 0 ; read only
 			LEA DX, Logofilename
 			INT 21h
-			
-			; you should check carry flag to make sure it worked correctly
-			; carry = 0 -> successful , file handle -> AX
-			; carry = 1 -> failed , AX -> error code
-			 
 			MOV [LogoFilehandle], AX
 			
 			RET
@@ -1804,8 +1841,9 @@ OpenLogoFile 	ENDP
 ReadLogoData	 PROC 	NEAR
 
 			MOV AH,3Fh
-			MOV BX, [LogoFilehandle]
-			MOV CX, LogoWidth*LogoHeight ; number of bytes to read
+			MOV BX, LogoFilehandle
+			MOV CX, 1	 ; number of bytes to read
+			INC PositionInLogoFile
 			LEA DX, LogoData
 			INT 21h
 			RET
@@ -1817,7 +1855,6 @@ ReadLogoData	 ENDP
 CloseLogoFile 	PROC 	NEAR
 			MOV AH, 3Eh
 			MOV BX, [LogoFilehandle]
-
 			INT 21h
 			RET
 CloseLogoFile 	ENDP
@@ -1828,7 +1865,6 @@ CloseLogoFile 	ENDP
 DrawLogo 	PROC 	NEAR
 			CALL OpenLogoFile
 				
-			CALL ReadLogoData
 				
 			LEA BX , LogoData 
 			MOV CX,LogostX
@@ -1836,12 +1872,25 @@ DrawLogo 	PROC 	NEAR
 			MOV AH,0ch ;Draw offset
 			
 drawLoop:
+			;Go load from file according to PositionInLogoFile
+			PUSHA ; to separate loading from drawing
+			
+			MOV AH,42H 				  ;SERVICE FOR SEEK.
+			MOV AL,0				  ;START FROM THE BEGINNING OF FILE.
+			MOV BX,LogoFilehandle	  ;FILE
+			MOV CX,0				  ;THE FILE POSITION MUST BE PLACED IN
+			MOV DX,PositionInLogoFile ;CX:DX, TO JUMP TO POSITION
+			INT 21H
+			
+			CALL ReadLogoData
+			
+			POPA
+			
 			MOV AL,[BX]
 			CMP AL, 0FH
 			JZ SkipPixel
 			INT 10h 
-SkipPixel:	INC CX
-			INC BX
+SkipPixel:	INC CX 
 			CMP CX,LogofnX
 			JNE drawLoop 
 			
@@ -2048,6 +2097,71 @@ DisplayMenu 	PROC     NEAR
 					JZ  Wait4Ready
 					RET		
 DisplayMenu      	ENDP
+;---------------------------
+;Procedure to print message that game ended
+;@param			none
+;@return		none
+GameEnded		PROC	NEAR
+				CALL Wait4Key
+				CMP AH, ESCcode
+				JE	ExitProg
+				MOV BP, OFFSET GameEnded1 ; ES: BP POINTS TO THE TEXT
+				MOV CX, GE1sz
+				MOV DH, GE1Y ; ROW TO PLACE STRING
+				MOV DL, GE1X ; COLUMN TO PLACE STRING
+				MOV BL, 04H ;Red
+				CALL PrintMessage
+
+				
+				MOV BP, OFFSET GameEnded2 ; ES: BP POINTS TO THE TEXT
+				MOV CX, GE2sz
+				MOV DH, GE2Y ;ROW TO PLACE STRING
+				MOV DL, GE2X ; COLUMN TO PLACE STRING
+				MOV BL, 04H ;Red
+				CALL PrintMessage	
+				
+				CALL Wait4Key
+				CMP AH, ESCcode	
+				JNE Ret2ViewMenu
+ExitProg:		CALL EndGame	
+Ret2ViewMenu:	RET
+GameEnded		ENDP				
+;---------------------------
+;Procedure to show menu on finishing the game 
+;@param			none
+;@return		none
+EndGameMenu		PROC 	NEAR
+
+				MOV PositionInLogoFile,0
+				
+				CALL DrawLogo
+				
+				MOV BP, OFFSET Logo4 ; ES: BP POINTS TO THE TEXT
+				MOV CX, L4sz
+				MOV DH, 20 ; ROW TO PLACE STRING
+				MOV DL, 51 ; COLUMN TO PLACE STRING
+				MOV BL, 0FH ;White
+				CALL PrintMessage
+
+				
+				MOV BP, OFFSET Logo3 ; ES: BP POINTS TO THE TEXT
+				MOV CX, L3sz
+				MOV DH, 22 ;ROW TO PLACE STRING
+				MOV DL, 51 ; COLUMN TO PLACE STRING
+				MOV BL, 0FH ;WHITE
+				CALL PrintMessage	
+				
+ControlOp:		CALL Wait4Key
+				CMP AH, EnterCode
+				JNE CkEsc
+				RET
+CkEsc:			CMP AH,EscCode
+				JNE ControlOp
+				CALL EndGame
+
+				
+				
+EndGameMenu		ENDP
 ;---------------------------------------------------
 ;Parses score number into text to be displayed on the screen
 ;Params		NONE
