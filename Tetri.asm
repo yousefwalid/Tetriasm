@@ -7,21 +7,251 @@ INCLUDE macros.inc
 .DATA
 ;INSERT DATA HERE
 
+;--------External-------
+LeftFrameTopWidth EQU  219
+LeftFrameTopHeight EQU 54
+LeftFrameTopFilename DB 'icetop.bin', 0
+LeftFrameTopX		 EQU 90
+LeftFrameTopY		 EQU 0
+LeftFrameTopFilehandle DW ?
+
+LeftFrameLeftWidth EQU  51
+LeftFrameLeftHeight EQU 426
+LeftFrameLeftFilename DB 'iceleft.bin', 0
+LeftFrameLeftX		 EQU 51
+LeftFrameLeftY		 EQU 54
+LeftFrameLeftFilehandle DW ?
+
+LeftFrameRightWidth EQU  43
+LeftFrameRightHeight EQU 426
+LeftFrameRightFilename DB 'iceright.bin', 0
+LeftFrameRightX		 EQU 297
+LeftFrameRightY		 EQU 54
+LeftFrameRightFilehandle DW ?
+
+LeftFrameBottomWidth EQU  197
+LeftFrameBottomHeight EQU 54
+LeftFrameBottomFilename DB 'icebot.bin', 0
+LeftFrameBottomX		 EQU 101
+LeftFrameBottomY		 EQU 451
+LeftFrameBottomFilehandle DW ?
+
+RightFrameTopWidth EQU  248
+RightFrameTopHeight EQU 53
+RightFrameTopFilename DB 'firetop.bin', 0
+RightFrameTopX		 EQU 576
+RightFrameTopY		 EQU 1
+RightFrameTopFilehandle DW ?
+
+RightFrameLeftWidth EQU  41
+RightFrameLeftHeight EQU 458
+RightFrameLeftFilename DB 'fireleft.bin', 0
+RightFrameLeftX		 EQU 561
+RightFrameLeftY		 EQU 54
+RightFrameLeftFilehandle DW ?
+
+RightFrameRightWidth EQU  49
+RightFrameRightHeight EQU 461
+RightFrameRightFilename DB 'firer.bin', 0
+RightFrameRightX		 EQU 797
+RightFrameRightY		 EQU 54
+RightFrameRightFilehandle DW ?
+
+RightFrameBottomWidth EQU  199
+RightFrameBottomHeight EQU 63
+RightFrameBottomFilename DB 'firebot.bin', 0
+RightFrameBottomX		 EQU 598
+RightFrameBottomY		 EQU 452
+RightFrameBottomFilehandle DW ?
+
+WideFrameWIDTH	EQU	250
+WideFrameHEIGHT EQU	60
+WideFrameData	DB	WideFrameHEIGHT*WideFrameWIDTH DUP(0)
+
+TallFrameWIDTH	EQU	60
+TallFrameHEIGHT EQU	465
+TallFrameData	DB	TallFrameHEIGHT*TallFrameWIDTH DUP(0)
+
+;; Main screen logo data
+
+LogoWidth 			EQU 297D
+LogoHeight 			EQU 200D
+
+LogostX				EQU 363D
+LogostY				EQU 100D
+LogofnX				EQU 660D
+LogofnY				EQU 300D	
+
+Logofilename 		DB 'Logo.bin', 0
+LogoFilehandle 		DW ?
+positionInLogoFile 	DW 0
+LogoData			DB  0
+
+;--------Powerups-------
+
+PowerupEveryPoint				EQU 4
+
+Player1Score					DB 0			;score of first player
+leftPowerupFreezeCount			DB 0
+leftPowerupSpeedUpCount			DB 0
+leftPowerupRemoveLinesCount		DB 0
+leftPowerupChangePieceCount		DB 0
+leftPowerupInsertTwoLinesCount	DB 0
+leftPieceRotationLock 			DB 0 	;lock the rotation of the piece 0:locked 1:free
+
+Player2Score					DB 0
+rightPowerupFreezeCount			DB 0
+rightPowerupSpeedUpCount		DB 0
+rightPowerupRemoveLinesCount	DB 0
+rightPowerupChangePieceCount	DB 0
+rightPowerupInsertTwoLinesCount	DB 0
+rightPieceRotationLock			DB 0	;lock the rotation of the piece 0:locked 1:free
+
+
+;--------GameData-------
+
 FRAMEWIDTH        	EQU  10      ;width of each frame in blocks
 FRAMEHEIGHT       	EQU  20     ;height of each frame in blocks
-
-BLOCKSIZE			EQU 20
 
 GAMESCRWIDTH        EQU  FRAMEWIDTH * BLOCKSIZE     ;width of each screen in pixels
 GAMESCRHEIGHT       EQU  FRAMEHEIGHT * BLOCKSIZE     ;height of each screen in pixels
 
+BLOCKSIZE			EQU 20		;size of block is BLOCKSIZE x BLOCKSIZE pixels
+
+								;Tetris grid is 20X10, so each block is 20X20 pixels
+GAMELEFTSCRX        DW  100     ;top left corner X of left screen
+GAMELEFTSCRY        DW  54      ;top left corner Y of left screen
+GAMERIGHTSCRX       DW  600     ;top left corner X of right screen
+GAMERIGHTSCRY       DW  54      ;top left corner Y of right screen
+
+
 FRAMETEXTOFFSET		EQU 50
 
-UnderlineStringLength 	equ 128
-UnderlineString		DB	"________________________________________________________________________________________________________________________________"
+DeltaScore			EQU 1		;amount of score a player gains by clearing a line
 
-PressEscToExitStringLength EQU 24
-PressEscToExitString DB "Press ESC Key to exit..."
+;; Position of player names 
+
+RightPlyLocX		EQU RightScoreLocX-10
+RightPlyLocY		EQU RightScoreLocY
+LeftPlyLocX			EQU LeftScoreLocX-10
+LeftPlyLocY			EQU LeftScoreLocY
+
+;------Pieces Data------
+
+;; Constant pieces data
+
+firstPiece 					DB 0,0,0,0,11,11,11,11,0,0,0,0,0,0,0,0	;Line shape
+firstPiece1					DB 0,11,0,0,0,11,0,0,0,11,0,0,0,11,0,0	;Line shape after one rotation
+firstPiece2					DB 0,0,0,0,11,11,11,11,0,0,0,0,0,0,0,0	;Line shape after two rotations
+firstPiece3					DB 0,11,0,0,0,11,0,0,0,11,0,0,0,11,0,0	;Line shape after Three rotations
+
+secondPiece					DB 1,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0	;J shape
+secondPiece1				DB 0,1,1,0,0,1,0,0,0,1,0,0,0,0,0,0	;J shape after one rotation
+secondPiece2				DB 0,0,0,0,1,1,1,0,0,0,1,0,0,0,0,0	;J shape after two rotations
+secondPiece3				DB 0,1,0,0,0,1,0,0,1,1,0,0,0,0,0,0	;J shape after three rotations
+
+thirdPiece 					DB 0,0,0,0,6,6,6,0,6,0,0,0,0,0,0,0	;L shape 
+thirdPiece1					DB 6,6,0,0,0,6,0,0,0,6,0,0,0,0,0,0	;L shape after one rotation
+thirdPiece2					DB 0,0,6,0,6,6,6,0,0,0,0,0,0,0,0,0	;L shape after two rotations
+thirdPiece3					DB 0,6,0,0,0,6,0,0,0,6,6,0,0,0,0,0	;L shape after three rotations
+
+fourthPiece 				DB 0,14,14,0,0,14,14,0,0,0,0,0,0,0,0,0	;square
+fourthPiece1				DB 0,14,14,0,0,14,14,0,0,0,0,0,0,0,0,0	;square after one rotation
+fourthPiece2				DB 0,14,14,0,0,14,14,0,0,0,0,0,0,0,0,0	;square after two rotations
+fourthPiece3				DB 0,14,14,0,0,14,14,0,0,0,0,0,0,0,0,0	;square after three rotation
+
+fifthPiece					DB 0,0,0,0,0,2,2,0,2,2,0,0,0,0,0,0	;S shape
+fifthPiece1					DB 0,2,0,0,0,2,2,0,0,0,2,0,0,0,0,0	;S shape after one rotation
+fifthPiece2					DB 0,0,0,0,0,2,2,0,2,2,0,0,0,0,0,0	;S shape after two rotations
+fifthPiece3					DB 0,2,0,0,0,2,2,0,0,0,2,0,0,0,0,0	;S shape after three rotations
+
+sixthPiece					DB 0,0,0,0,5,5,5,0,0,5,0,0,0,0,0,0	;T shape
+sixthPiece1					DB 0,5,0,0,5,5,0,0,0,5,0,0,0,0,0,0	;T shape after one rotation
+sixthPiece2					DB 0,5,0,0,5,5,5,0,0,0,0,0,0,0,0,0	;T shape after two rotations
+sixthPiece3					DB 0,5,0,0,0,5,5,0,0,5,0,0,0,0,0,0	;T shape after three rotations
+
+seventhPiece 				DB 0,0,0,0,4,4,0,0,0,4,4,0,0,0,0,0	;Z shape
+seventhPiece1				DB 0,0,4,0,0,4,4,0,0,4,0,0,0,0,0,0	;Z shape after one rotation
+seventhPiece2				DB 0,0,0,0,4,4,0,0,0,4,4,0,0,0,0,0	;Z shape after two rotations
+seventhPiece3				DB 0,0,4,0,0,4,4,0,0,4,0,0,0,0,0,0	;Z shape after three rotation
+
+;;PLayer pieces data 
+
+leftPieceId					DB	?			;contains the ID of the current piece
+leftPieceOrientation		DB	?			;contains the current orientation of the piece
+leftPieceLocX				DB	?			;the Xcoord of the top left corner
+leftPieceLocY				DB	?			;the Ycoord of the top left corner
+leftPieceData				DB	16 DUP(?)	;contains the 4x4 matrix of the piece (after orientation)
+leftPieceSpeed				DB	1			;contains the falling speed of the left piece
+
+rightPieceId				DB	?			;contains the ID of the current piece
+rightPieceOrientation		DB	?			;contains the current orientation of the piece
+rightPieceLocX				DB	?			;the Xcoord of the top left corner
+rightPieceLocY				DB	?			;the Ycoord of the top left corner
+rightPieceData				DB	16 DUP(?)	;contains the 4x4 matrix of the piece (after orientation)
+rightPieceSpeed				DB	1			;contains the falling speed of the right piece
+
+tempPieceOffset				DW	?			;contains the address of the current piece
+
+;;Coliision piece info
+
+collisionPieceId				DB	?			;contains the ID of the current piece
+collisionPieceOrientation		DB	?			;contains the current orientation of the piece
+collisionPieceLocX				DB	?			;the Xcoord of the top left corner
+collisionPieceLocY				DB	?			;the Ycoord of the top left corner
+collisionPieceData				DB	16 DUP(?)	;contains the 4x4 matrix of the piece (after orientation)
+collisionPieceSpeed				DB	1			;contains the falling speed of the left piece
+
+;;Next piece info
+
+nextLeftPieceId					DB	?			;contains the ID of the current piece
+nextLeftPieceOrientation		DB	?			;contains the next orientation of the piece
+nextLeftPieceLocX				DB	?			;the Xcoord of the top left corner
+nextLeftPieceLocY				DB	?			;the Ycoord of the top left corner
+nextLeftPieceData				DB	16 DUP(?)	;contains the 4x4 matrix of the piece (after orientation)
+
+nextRightPieceId				DB	?			;contains the ID of the current piece
+nextRightPieceOrientation		DB	?			;contains the current orientation of the piece
+nextRightPieceLocX				DB	?			;the Xcoord of the top left corner
+nextRightPieceLocY				DB	?			;the Ycoord of the top left corner
+nextRightPieceData				DB	16 DUP(?)	;contains the 4x4 matrix of the piece (after orientation)
+
+tempNextPieceOffset				DW	?			;contains the address of the next piece
+
+;--------Controls-------
+
+;Controls for left screen
+leftDownCode			DB	1Fh		;S key
+leftLeftCode			DB	1Eh		;A key
+leftRightCode			DB	20h		;D key
+leftRotCode				DB	11h		;W key
+leftPower1				DB  02h		;1 key
+leftPower2				DB  03h		;2 key
+leftPower3				DB  04h		;3 key
+leftPower4				DB  05h		;4 key
+leftPower5				DB  06h		;5 key
+
+;Controls for right screen
+rightDownCode			DB	50h		;downArrow key
+rightLeftCode			DB	4Bh 	;leftArrow key
+rightRightCode			DB	4Dh		;rightArrow key
+rightRotCode			DB	48h 	;upArrow key
+rightPower1				DB	31h		;N key
+rightPower2				DB	32h		;M key
+rightPower3				DB	33h 	;, key
+rightPower4				DB	34h		;. key
+rightPower5				DB	35h		;/ key
+
+;General ScanCodes
+EnterCode  DB 1CH
+F1Code     DB 3BH
+F2Code     DB 3CH
+F10Code    DB 44H 
+EscCode	   DB 01H
+
+;--------Strings--------
+
+;; Next and Score Strings
 
 NEXTPIECETEXTLENGTH EQU 4
 NEXTPIECETEXT		DB	"Next"
@@ -30,7 +260,6 @@ LEFTNEXTPIECELOCY	EQU 4
 RIGHTNEXTPIECELOCX	EQU 108
 RIGHTNEXTPIECELOCY	EQU 4
 
-
 SCORETEXTLENGTH		EQU 6
 SCORETEXT			DB	"Score:"
 LeftScoreLocX		EQU 23
@@ -38,17 +267,17 @@ LeftScoreLocY		EQU 33
 RightScoreLocX		EQU 87
 RightScoreLocY		EQU 33
 
-
 LeftScoreTextLength EQU 2
 LeftScoreText		DB "00"
 LeftScoreStringLocX	EQU LeftScoreLocX+7
 LeftScoreStringLocY	EQU LeftScoreLocY
 
-
 RightScoreTextLength 	EQU 2
 RightScoreText			DB "00"
 RightScoreStringLocX	EQU RightScoreLocX+7
 RightScoreStringLocY	EQU RightScoreLocY
+
+;; Powerups strings
 
 FreezeStringLength		EQU 6
 FreezeStringColor		EQU 4
@@ -123,8 +352,8 @@ InsertTwoLinesStringLength		EQU 14
 InsertTwoLinesString			DB	"Insert 2 Lines"
 LeftInsertTwoLinesLocX			EQU 45
 LeftInsertTwoLinesLocY			EQU 25
-RightInsertTwoLinesLocX		EQU 107
-RightInsertTwoLinesLocY		EQU 25
+RightInsertTwoLinesLocX			EQU 107
+RightInsertTwoLinesLocY			EQU 25
 
 LeftInsertTwoLinesTextLength	EQU 2
 LeftInsertTwoLinesText			DB "00"
@@ -136,104 +365,24 @@ RightInsertTwoLinesText			DB "00"
 RightInsertTwoLinesStringLocX	EQU 107
 RightInsertTwoLinesStringLocY	EQU RightInsertTwoLinesLocY+1
 
+;; Aux screen strings
 
-DeltaScore	EQU 1
+UnderlineStringLength 	EQU 128
+UnderlineString			DB	"________________________________________________________________________________________________________________________________"
 
-						;Tetris grid is 20X10, so each block is 20X20 pixels
-GAMELEFTSCRX        DW  100     ;top left corner X of left screen
-GAMELEFTSCRY        DW  54      ;top left corner Y of left screen
-GAMERIGHTSCRX       DW  600     ;top left corner X of right screen
-GAMERIGHTSCRY       DW  54      ;top left corner Y of right screen
+PressEscToExitStringLength 	EQU 24
+PressEscToExitString 		DB "Press ESC Key to exit..."
 
-LeftFrameTopWidth EQU  219
-LeftFrameTopHeight EQU 54
-LeftFrameTopFilename DB 'icetop.bin', 0
-LeftFrameTopX		 EQU 90
-LeftFrameTopY		 EQU 0
-LeftFrameTopFilehandle DW ?
+;; Main screen strings
 
-LeftFrameLeftWidth EQU  51
-LeftFrameLeftHeight EQU 426
-LeftFrameLeftFilename DB 'iceleft.bin', 0
-LeftFrameLeftX		 EQU 51
-LeftFrameLeftY		 EQU 54
-LeftFrameLeftFilehandle DW ?
-
-LeftFrameRightWidth EQU  43
-LeftFrameRightHeight EQU 426
-LeftFrameRightFilename DB 'iceright.bin', 0
-LeftFrameRightX		 EQU 297
-LeftFrameRightY		 EQU 54
-LeftFrameRightFilehandle DW ?
-
-LeftFrameBottomWidth EQU  197
-LeftFrameBottomHeight EQU 54
-LeftFrameBottomFilename DB 'icebot.bin', 0
-LeftFrameBottomX		 EQU 101
-LeftFrameBottomY		 EQU 451
-LeftFrameBottomFilehandle DW ?
-
-RightFrameTopWidth EQU  248
-RightFrameTopHeight EQU 53
-RightFrameTopFilename DB 'firetop.bin', 0
-RightFrameTopX		 EQU 576
-RightFrameTopY		 EQU 1
-RightFrameTopFilehandle DW ?
-
-RightFrameLeftWidth EQU  41
-RightFrameLeftHeight EQU 458
-RightFrameLeftFilename DB 'fireleft.bin', 0
-RightFrameLeftX		 EQU 561
-RightFrameLeftY		 EQU 54
-RightFrameLeftFilehandle DW ?
-
-RightFrameRightWidth EQU  49
-RightFrameRightHeight EQU 461
-RightFrameRightFilename DB 'firer.bin', 0
-RightFrameRightX		 EQU 797
-RightFrameRightY		 EQU 54
-RightFrameRightFilehandle DW ?
-
-RightFrameBottomWidth EQU  199
-RightFrameBottomHeight EQU 63
-RightFrameBottomFilename DB 'firebot.bin', 0
-RightFrameBottomX		 EQU 598
-RightFrameBottomY		 EQU 452
-RightFrameBottomFilehandle DW ?
-
-WideFrameWIDTH	EQU	250
-WideFrameHEIGHT EQU	60
-
-
-WideFrameData	DB	WideFrameHEIGHT*WideFrameWIDTH DUP(0)
-
-TallFrameWIDTH	EQU	60
-TallFrameHEIGHT EQU	465
-
-TallFrameData	DB	TallFrameHEIGHT*TallFrameWIDTH DUP(0)
-
-;===========================================================================
-LogoWidth EQU 297D
-LogoHeight EQU 200D
-
-LogostX				EQU 363D
-LogostY				EQU 100D
-LogofnX				EQU 660D
-LogofnY				EQU 300D	
-
-
-Logofilename DB 'Logo.bin', 0
-
-LogoFilehandle DW ?
-
-positionInLogoFile DW 0
-
-LogoData		DB  0
-
-RightPlyLocX		EQU RightScoreLocX-10
-RightPlyLocY		EQU RightScoreLocY
-LeftPlyLocX			EQU LeftScoreLocX-10
-LeftPlyLocY			EQU LeftScoreLocY
+Menu11 	DB "Please enter your name:"
+M11sz	EQU 23
+Menu12 	DB "Press Enter Key to Continue"
+M12sz	EQU 27
+Menu21 	DB ", Press F2 to play"
+M21sz	EQU 18
+Menu22 	DB ", Press F10 to play"
+M22sz	EQU 19 
 
 Logo1     DB "*To start chatting press F1"
 L1sz   	  EQU 27
@@ -244,21 +393,12 @@ L3sz   	  EQU 29
 Logo4	  DB "*To main menu press Enter"
 L4sz	  EQU 25	
 
-Menu11 DB "Please enter your name:"
-M11sz	EQU 23
-Menu12 DB "Press Enter Key to Continue"
-M12sz	EQU 27
-Menu21 DB ", Press F2 to play"
-M21sz	EQU 18
-Menu22 DB ", Press F10 to play"
-M22sz	EQU 19 
-
-GameEnded1 DB "Game ended"
+GameEnded1	DB "Game ended"
 GE1sz		EQU 10
 GE1X 		EQU 53
 GE1Y		EQU 32
 		
-GameEnded2 DB "To continue press any key"
+GameEnded2 	DB "To continue press any key"
 GE2sz		EQU 25
 GE2X 		EQU 47
 GE2Y		EQU 34
@@ -267,147 +407,21 @@ Ready  DB 'R'
 RPly1  DB  0
 RPly2  DB  0
 
-SPACE DB ' '
-NAME1 DB 15
+SPACE 		DB ' '
+NAME1		DB 15
 Ply1Sz		DB ?
-Player1	DB 10 DUP(' ')
+Player1		DB 10 DUP(' ')
 NAME2 		DB 15
-Ply2Sz			DB ?
+Ply2Sz		DB ?
 Player2		DB 10 DUP(' ')
 NameSz		EQU 6
-;===========================================================================
 
-
-
-;CONTROL KEYS (scancodes)
-
-;Controls for left screen
-leftDownCode			DB	1Fh		;S key
-leftLeftCode			DB	1Eh		;A key
-leftRightCode			DB	20h		;D key
-leftRotCode				DB	11h		;W key
-leftPower1				DB  02h		;1 key
-leftPower2				DB  03h		;2 key
-leftPower3				DB  04h		;3 key
-leftPower4				DB  05h		;4 key
-leftPower5				DB  06h		;5 key
-;Controls for right screen
-rightDownCode			DB	50h		;downArrow key
-rightLeftCode			DB	4Bh 	;leftArrow key
-rightRightCode			DB	4Dh		;rightArrow key
-rightRotCode			DB	48h 	;upArrow key
-rightPower1				DB	31h		;N key
-rightPower2				DB	32h		;M key
-rightPower3				DB	33h 	;, key
-rightPower4				DB	34h		;. key
-rightPower5				DB	35h		;/ key
-
-;General ScanCodes
-EnterCode  DB 1CH
-F1Code     DB 3BH
-F2Code     DB 3CH
-F10Code    DB 44H 
-EscCode	   DB 01H
-
-PowerupEveryPoint			EQU 4
-
-;CURRENT PIECE INFO
-leftPieceId					DB	?			;contains the ID of the current piece
-leftPieceOrientation		DB	?			;contains the current orientation of the piece
-leftPieceLocX				DB	?			;the Xcoord of the top left corner
-leftPieceLocY				DB	?			;the Ycoord of the top left corner
-leftPieceData				DB	16 DUP(?)	;contains the 4x4 matrix of the piece (after orientation)
-leftPieceSpeed				DB	1			;contains the falling speed of the left piece
-Player1Score				DB	0			;score of first player
-leftPowerupFreezeCount					DB  0
-leftPowerupSpeedUpCount					DB  0
-leftPowerupRemoveLinesCount				DB	0
-leftPowerupChangePieceCount				DB 	0
-leftPowerupInsertTwoLinesCount			DB 	0
-leftPieceRotationLock 		DB 0 	;lock the rotation of the piece 0:locked 1:free
-
-rightPieceId				DB	?			;contains the ID of the current piece
-rightPieceOrientation		DB	?			;contains the current orientation of the piece
-rightPieceLocX				DB	?			;the Xcoord of the top left corner
-rightPieceLocY				DB	?			;the Ycoord of the top left corner
-rightPieceData				DB	16 DUP(?)	;contains the 4x4 matrix of the piece (after orientation)
-rightPieceSpeed				DB	1			;contains the falling speed of the right piece
-Player2Score				DB	0
-rightPowerupFreezeCount					DB 	0
-rightPowerupSpeedUpCount				DB	0
-rightPowerupRemoveLinesCount			DB	0
-rightPowerupChangePieceCount			DB	0
-rightPowerupInsertTwoLinesCount			DB	0
-rightPieceRotationLock	DB 0	;lock the rotation of the piece 0:locked 1:free
-
-
-tempPieceOffset				DW	?			;contains the address of the current piece
-
-collisionPieceId				DB	?			;contains the ID of the current piece
-collisionPieceOrientation		DB	?			;contains the current orientation of the piece
-collisionPieceLocX				DB	?			;the Xcoord of the top left corner
-collisionPieceLocY				DB	?			;the Ycoord of the top left corner
-collisionPieceData				DB	16 DUP(?)	;contains the 4x4 matrix of the piece (after orientation)
-collisionPieceSpeed				DB	1			;contains the falling speed of the left piece
-
-;NEXT PIECE INFO
-nextLeftPieceId					DB	?			;contains the ID of the current piece
-nextLeftPieceOrientation		DB	?			;contains the next orientation of the piece
-nextLeftPieceLocX				DB	?			;the Xcoord of the top left corner
-nextLeftPieceLocY				DB	?			;the Ycoord of the top left corner
-nextLeftPieceData				DB	16 DUP(?)	;contains the 4x4 matrix of the piece (after orientation)
-
-nextRightPieceId				DB	?			;contains the ID of the current piece
-nextRightPieceOrientation		DB	?			;contains the current orientation of the piece
-nextRightPieceLocX				DB	?			;the Xcoord of the top left corner
-nextRightPieceLocY				DB	?			;the Ycoord of the top left corner
-nextRightPieceData				DB	16 DUP(?)	;contains the 4x4 matrix of the piece (after orientation)
-
-tempNextPieceOffset				DW	?			;contains the address of the next piece
-
-;PIECES DATA
-firstPiece 					DB 0,0,0,0,11,11,11,11,0,0,0,0,0,0,0,0	;Line shape
-firstPiece1					DB 0,11,0,0,0,11,0,0,0,11,0,0,0,11,0,0	;Line shape after one rotation
-firstPiece2					DB 0,0,0,0,11,11,11,11,0,0,0,0,0,0,0,0	;Line shape after two rotations
-firstPiece3					DB 0,11,0,0,0,11,0,0,0,11,0,0,0,11,0,0	;Line shape after Three rotations
-
-secondPiece					DB 1,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0	;J shape
-secondPiece1				DB 0,1,1,0,0,1,0,0,0,1,0,0,0,0,0,0	;J shape after one rotation
-secondPiece2				DB 0,0,0,0,1,1,1,0,0,0,1,0,0,0,0,0	;J shape after two rotations
-secondPiece3				DB 0,1,0,0,0,1,0,0,1,1,0,0,0,0,0,0	;J shape after three rotations
-
-thirdPiece 					DB 0,0,0,0,6,6,6,0,6,0,0,0,0,0,0,0	;L shape 
-thirdPiece1					DB 6,6,0,0,0,6,0,0,0,6,0,0,0,0,0,0	;L shape after one rotation
-thirdPiece2					DB 0,0,6,0,6,6,6,0,0,0,0,0,0,0,0,0	;L shape after two rotations
-thirdPiece3					DB 0,6,0,0,0,6,0,0,0,6,6,0,0,0,0,0	;L shape after three rotations
-
-fourthPiece 				DB 0,14,14,0,0,14,14,0,0,0,0,0,0,0,0,0	;square
-fourthPiece1				DB 0,14,14,0,0,14,14,0,0,0,0,0,0,0,0,0	;square after one rotation
-fourthPiece2				DB 0,14,14,0,0,14,14,0,0,0,0,0,0,0,0,0	;square after two rotations
-fourthPiece3				DB 0,14,14,0,0,14,14,0,0,0,0,0,0,0,0,0	;square after three rotation
-
-fifthPiece					DB 0,0,0,0,0,2,2,0,2,2,0,0,0,0,0,0	;S shape
-fifthPiece1					DB 0,2,0,0,0,2,2,0,0,0,2,0,0,0,0,0	;S shape after one rotation
-fifthPiece2					DB 0,0,0,0,0,2,2,0,2,2,0,0,0,0,0,0	;S shape after two rotations
-fifthPiece3					DB 0,2,0,0,0,2,2,0,0,0,2,0,0,0,0,0	;S shape after three rotations
-
-sixthPiece					DB 0,0,0,0,5,5,5,0,0,5,0,0,0,0,0,0	;T shape
-sixthPiece1					DB 0,5,0,0,5,5,0,0,0,5,0,0,0,0,0,0	;T shape after one rotation
-sixthPiece2					DB 0,5,0,0,5,5,5,0,0,0,0,0,0,0,0,0	;T shape after two rotations
-sixthPiece3					DB 0,5,0,0,0,5,5,0,0,5,0,0,0,0,0,0	;T shape after three rotations
-
-seventhPiece 				DB 0,0,0,0,4,4,0,0,0,4,4,0,0,0,0,0	;Z shape
-seventhPiece1				DB 0,0,4,0,0,4,4,0,0,4,0,0,0,0,0,0	;Z shape after one rotation
-seventhPiece2				DB 0,0,0,0,4,4,0,0,0,4,4,0,0,0,0,0	;Z shape after two rotations
-seventhPiece3				DB 0,0,4,0,0,4,4,0,0,4,0,0,0,0,0,0	;Z shape after three rotation
-
+;-------General vars-------
 Seconds						DB 99			;Contains the previous second value
-
 GameFlag					DB 1			;Status of the game
-
 GRAYBLOCKCLR				EQU	 8		;color of gray solid blocks
-.CODE 
-;---------------------------        
+;---------------------------
+.CODE         
 MAIN    PROC    FAR
 		MOV AX, @DATA   ;SETUP DATA ADDRESS
 		MOV DS, AX      ;MOV DATA ADDRESS TO DS
@@ -415,40 +429,9 @@ MAIN    PROC    FAR
 		
 		CALL GetName
 NewGame:
-		MOV rightPieceSpeed , 1			;contains the falling speed of the right piece
-		MOV Player2Score , 0
-		MOV rightPowerupFreezeCount	, 0
-		MOV rightPowerupSpeedUpCount , 0
-		MOV rightPowerupRemoveLinesCount , 0
-		MOV rightPowerupChangePieceCount , 0
-		MOV	rightPowerupInsertTwoLinesCount	, 0
-		MOV	rightPieceRotationLock ,0
-		
-		MOV leftPieceSpeed , 1			;contains the falling speed of the left piece
-		MOV Player1Score, 0			;score of first player
-		MOV leftPowerupFreezeCount	,  0
-		MOV leftPowerupSpeedUpCount	,  0
-		MOV leftPowerupRemoveLinesCount	,0
-		MOV leftPowerupChangePieceCount	, 	0
-		MOV leftPowerupInsertTwoLinesCount	,	0
-		MOV leftPieceRotationLock ,0
-		
-		MOV RPly1,0
-		MOV Rply2,0
-		
-		MOV collisionPieceSpeed	, 1
-		
-		MOV PositionInLogoFile,0
-		MOV Seconds,99		
-		MOV GameFlag, 1
+		CALL InitializeNewGame
 		CALL DisplayMenu 
 ;-----------------------------------------------
-
-		;MOV AH, 00H       ;PREPARE GFX MODE
-		;MOV AL, 13H
-		;MOV BX,105H
-		;INT 10H         ;ENTER GFX MODE
-
 		mov     AX, 4F02H
         mov     BX, 0105H
         INT     10H
@@ -485,6 +468,36 @@ Finished:
 		JMP NewGame
 		
 MAIN    ENDP
+;---------------------------
+InitializeNewGame 	PROC	NEAR
+					MOV rightPieceSpeed , 1			;contains the falling speed of the right piece
+					MOV Player2Score , 0
+					MOV rightPowerupFreezeCount	, 0
+					MOV rightPowerupSpeedUpCount , 0
+					MOV rightPowerupRemoveLinesCount , 0
+					MOV rightPowerupChangePieceCount , 0
+					MOV	rightPowerupInsertTwoLinesCount	, 0
+					MOV	rightPieceRotationLock ,0
+					
+					MOV leftPieceSpeed , 1			;contains the falling speed of the left piece
+					MOV Player1Score, 0			;score of first player
+					MOV leftPowerupFreezeCount	,  0
+					MOV leftPowerupSpeedUpCount	,  0
+					MOV leftPowerupRemoveLinesCount	,0
+					MOV leftPowerupChangePieceCount	, 	0
+					MOV leftPowerupInsertTwoLinesCount	,	0
+					MOV leftPieceRotationLock ,0
+					
+					MOV RPly1,0
+					MOV Rply2,0
+					
+					MOV collisionPieceSpeed	, 1
+					
+					MOV PositionInLogoFile,0
+					MOV Seconds,99		
+					MOV GameFlag, 1
+					RET
+InitializeNewGame 	ENDP
 ;---------------------------
 ;This PROC draws the screens of the two players given the parameters in data segment
 ;@param     none
@@ -2025,7 +2038,9 @@ GetName		ENDP
 ;@return		none
 DisplayMenu 	PROC     NEAR			
 				
-				;Game Logo Screen
+				CALL InitializeNewGame
+
+					;Game Logo Screen
 				MOV     AX, 4F02H
 				MOV     BX, 0105H
 				INT     10H
