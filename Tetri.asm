@@ -77,10 +77,10 @@ TallFrameData	DB	TallFrameHEIGHT*TallFrameWIDTH DUP(0)
 LogoWidth 			EQU 297D
 LogoHeight 			EQU 200D
 
-LogostX				EQU 363D
-LogostY				EQU 100D
-LogofnX				EQU 660D
-LogofnY				EQU 300D	
+LogostX				EQU 170D
+LogostY				EQU 30D
+LogofnX				EQU LogostX + LogoWidth
+LogofnY				EQU LogostY + LogoHeight	
 
 Logofilename 		DB 'Logo.bin', 0
 LogoFilehandle 		DW ?
@@ -461,10 +461,7 @@ GAMELP:
 
 Finished:
 		CALL GameEnded
-		mov     AX, 4F02H
-        mov     BX, 0105H
-        INT     10H
-		CALL 	EndGameMenu
+		CALL EndGameMenu
 		JMP NewGame
 		
 MAIN    ENDP
@@ -1877,8 +1874,7 @@ CloseLogoFile 	ENDP
 ;@return		none
 DrawLogo 	PROC 	NEAR
 			CALL OpenLogoFile
-				
-				
+
 			LEA BX , LogoData 
 			MOV CX,LogostX
 			MOV DX,LogostY
@@ -1925,22 +1921,22 @@ DrawLogoMenu 	PROC	NEAR
 			
 			MOV BP, OFFSET Logo1 ; ES: BP POINTS TO THE TEXT
 			MOV CX, L1sz
-			MOV DH, 20;ROW TO PLACE STRING
-			MOV DL, 51 ; COLUMN TO PLACE STRING
+			MOV DH, 16;ROW TO PLACE STRING
+			MOV DL, 27 ; COLUMN TO PLACE STRING
 			MOV BL, 01H ;Blue
 			CALL PrintMessage
 
 			MOV BP, OFFSET Logo2 ; ES: BP POINTS TO THE TEXT
 			MOV CX, L2sz
-			MOV DH, 22;ROW TO PLACE STRING
-			MOV DL, 52 ; COLUMN TO PLACE STRING
+			MOV DH, 18;ROW TO PLACE STRING
+			MOV DL, 27 ; COLUMN TO PLACE STRING
 			MOV BL, 04H ;Red
 			CALL PrintMessage
 
 			MOV BP, OFFSET Logo3 ; ES: BP POINTS TO THE TEXT
 			MOV CX, L3sz
-			MOV DH, 24;ROW TO PLACE STRING
-			MOV DL, 51 ; COLUMN TO PLACE STRING
+			MOV DH, 20;ROW TO PLACE STRING
+			MOV DL, 27 ; COLUMN TO PLACE STRING
 			MOV BL, 15 ;WHITE
 			CALL PrintMessage	
 			
@@ -2042,7 +2038,7 @@ DisplayMenu 	PROC     NEAR
 
 					;Game Logo Screen
 				MOV     AX, 4F02H
-				MOV     BX, 0105H
+				MOV     BX, 0100H
 				INT     10H
 												
 				CALL DrawLogoMenu			
@@ -2147,22 +2143,26 @@ GameEnded		ENDP
 ;@return		none
 EndGameMenu		PROC 	NEAR
 
+				MOV AX, 4F02H
+				MOV BX, 0100H
+				INT 10H
+
 				MOV PositionInLogoFile,0
 				
 				CALL DrawLogo
 				
 				MOV BP, OFFSET Logo4 ; ES: BP POINTS TO THE TEXT
 				MOV CX, L4sz
-				MOV DH, 20 ; ROW TO PLACE STRING
-				MOV DL, 51 ; COLUMN TO PLACE STRING
+				MOV DH, 16 ; ROW TO PLACE STRING
+				MOV DL, 27 ; COLUMN TO PLACE STRING
 				MOV BL, 0FH ;White
 				CALL PrintMessage
 
 				
 				MOV BP, OFFSET Logo3 ; ES: BP POINTS TO THE TEXT
 				MOV CX, L3sz
-				MOV DH, 22 ;ROW TO PLACE STRING
-				MOV DL, 51 ; COLUMN TO PLACE STRING
+				MOV DH, 18 ;ROW TO PLACE STRING
+				MOV DL, 27 ; COLUMN TO PLACE STRING
 				MOV BL, 0FH ;WHITE
 				CALL PrintMessage	
 				
