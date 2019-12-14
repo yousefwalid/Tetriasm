@@ -232,15 +232,15 @@ leftPower4				DB  05h		;4 key
 leftPower5				DB  06h		;5 key
 
 ;Controls for right screen
-rightDownCode			DB	50h		;downArrow key
-rightLeftCode			DB	4Bh 	;leftArrow key
-rightRightCode			DB	4Dh		;rightArrow key
-rightRotCode			DB	48h 	;upArrow key
-rightPower1				DB	31h		;N key
-rightPower2				DB	32h		;M key
-rightPower3				DB	33h 	;, key
-rightPower4				DB	34h		;. key
-rightPower5				DB	35h		;/ key
+; rightDownCode			DB	50h		;downArrow key
+; rightLeftCode			DB	4Bh 	;leftArrow key
+; rightRightCode			DB	4Dh		;rightArrow key
+; rightRotCode			DB	48h 	;upArrow key
+; rightPower1				DB	31h		;N key
+; rightPower2				DB	32h		;M key
+; rightPower3				DB	33h 	;, key
+; rightPower4				DB	34h		;. key
+; rightPower5				DB	35h		;/ key
 
 ;General ScanCodes
 EnterCode  DB 1CH
@@ -416,8 +416,9 @@ Ply2Sz		DB ?
 Player2		DB 10 DUP(' ')
 NameSz		EQU 6
 ;-------Serial Data--------
-Player1Id	DW	0			;current player ID, 0 or 4 depending on player number
-Player2Id	DW	4			;other player ID, 0 or 4 depending on player number
+PlayerId	DW	0			;temp placeholder for parsing
+Player1Id	DW	4			;current player ID, 0 or 4 depending on player number
+Player2Id	DW	0			;other player ID, 0 or 4 depending on player number
 ;-------General vars-------
 Seconds						DB 99			;Contains the previous second value
 GameFlag					DB 1			;Status of the game
@@ -1055,22 +1056,25 @@ YesInput:
 			MOV AH, 0
 			INT 16H
 			CALL SendValueThroughSerial
+			MOV SI, Player1Id
+			MOV PlayerId, SI
 			CALL ParseLocalInput
 			RET
 NoInput:
 			CALL ReceiveValueFromSerial
 			CMP AL, 1
 			JZ	NoSerialInput
+			MOV SI, Player2Id
+			MOV PlayerId, SI
 			CALL ParseLocalInput
 NoSerialInput:
 			RET
 ParseInput	ENDP
 ;---------------------------
 ;This procedure parses input and calls corresponding procedures
-;@param			AH: key to parse
+;@param			AH: key to parse, SI: playerID
 ;@return		none
 ParseLocalInput	PROC	NEAR
-
 ExitGame:
 		CMP AH, ESCCode
 		JNZ LeftRotKey
@@ -1086,20 +1090,20 @@ LeftRotKey:
 		CMP leftPieceRotationLock,1 ;check if the rotation is locked
 		JZ LeftRotKeyParsed
 
-		MOV SI, Player1Id
+		MOV SI, PlayerId
 		CALL GetTempPiece
 
-		MOV SI, Player1Id
+		MOV SI, PlayerId
 		CALL RotatePiece
 LeftRotKeyParsed:
 		JMP BreakParseInput
 LeftLeftKey:
 		CMP AH, leftLeftCode
 		JNZ LeftDownKey
-		MOV SI, Player1Id
+		MOV SI, PlayerId
 		CALL GetTempPiece
 
-		MOV SI, Player1Id
+		MOV SI, PlayerId
 		MOV BX, 1
 		CALL MovePiece
 
@@ -1107,10 +1111,10 @@ LeftLeftKey:
 LeftDownKey:
 		CMP AH, leftDownCode
 		JNZ LeftRightKey
-		MOV SI, Player1Id
+		MOV SI, PlayerId
 		CALL GetTempPiece
 
-		MOV SI,Player1Id
+		MOV SI,PlayerId
 		MOV BX,0
 		CALL MovePiece
 
@@ -1118,62 +1122,15 @@ LeftDownKey:
 		JMP BreakParseInput
 LeftRightKey:
 		CMP AH, leftRightCode
-		JNZ RightRotKey
-		MOV SI, Player1Id
+		JNZ LeftPowerup1
+		MOV SI, PlayerId
 		CALL GetTempPiece
 
-		MOV SI,Player1Id
+		MOV SI,PlayerId
 		MOV BX,2
 		CALL MovePiece
 
 		JMP BreakParseInput
-RightRotKey:
-		CMP AH, rightRotCode
-		JNZ RightLeftKey
-
-		CMP rightPieceRotationLock,1 ;check if the rotation is locked
-		JZ BreakRotParseInput
-
-		MOV SI, Player2Id
-		CALL GetTempPiece
-
-		MOV SI, Player2Id
-		CALL RotatePiece
-BreakRotParseInput:
-		JMP BreakParseInput
-RightLeftKey:
-		CMP AH, rightLeftCode
-		JNZ RightDownKey
-		MOV SI, Player2Id
-		CALL GetTempPiece
-
-		MOV SI, Player2Id
-		MOV BX, 1
-		CALL MovePiece
-
-		JMP BreakParseInput
-RightDownKey:
-		CMP AH, rightDownCode
-		JNZ RightRightKey
-		MOV SI, Player2Id
-		CALL GetTempPiece
-
-		MOV SI, Player2Id
-		MOV BX, 0
-		CALL MovePiece
-
-		JMP BreakParseInput
-RightRightKey:
-		CMP AH, rightRightCode
-		JNZ LeftPowerup1
-		MOV SI, Player2Id
-		CALL GetTempPiece
-		
-		MOV SI, Player2Id
-		MOV BX, 2
-		CALL MovePiece
-		JMP BreakParseInput
-
 LeftPowerup1:
 		CMP AH, leftPower1
 		JNZ LeftPowerup2
@@ -1182,7 +1139,7 @@ LeftPowerup1:
 		CMP AH, 0
 		JZ	BreakPowerup1
 
-		MOV SI, Player1Id
+		MOV SI, PlayerId
 		CALL FreezeRotation
 		SUB leftPowerupFreezeCount, 1
 		CALL UpdatePowerupsScore
@@ -1198,7 +1155,7 @@ LeftPowerup2:
 		CMP AH, 0
 		JZ	BreakPowerup2
 
-		MOV SI, Player1Id
+		MOV SI, PlayerId
 		CALL SpeedUpOpponentPiece
 		SUB leftPowerupSpeedUpCount, 1
 		CALL UpdatePowerupsScore
@@ -1213,7 +1170,7 @@ LeftPowerup3:
 		CMP AH, 0
 		JZ	BreakPowerup3
 
-		MOV SI, Player1Id
+		MOV SI, PlayerId
 		CALL RemoveFourLines
 		SUB leftPowerupRemoveLinesCount, 1
 		CALL UpdatePowerupsScore
@@ -1227,7 +1184,7 @@ LeftPowerup4:
 		CMP AH, 0
 		JZ	BreakPowerup4
 
-		MOV SI, Player1Id
+		MOV SI, PlayerId
 		CALL ChangePiece
 		SUB leftPowerupChangePieceCount,1
 		CALL UpdatePowerupsScore
@@ -1236,90 +1193,19 @@ BreakPowerup4:
 
 LeftPowerup5:
 		CMP AH, LeftPower5
-		JNZ RightPowerup1
+		JNZ BreakPowerup5
 
 		MOV AH, leftPowerupInsertTwoLinesCount
 		CMP AH, 0
 		JZ	BreakPowerup5
 
 
-		MOV SI, Player1Id
+		MOV SI, PlayerId
 		CALL InsertTwoLines
 		SUB leftPowerupInsertTwoLinesCount,1
 		CALL UpdatePowerupsScore
 
 BreakPowerup5:
-		JMP BreakParseInput
-
-RightPowerup1:
-		CMP AH, RightPower1
-		JNZ RightPowerup2
-
-		MOV AH, rightPowerupFreezeCount
-		CMP AH, 0
-		JZ	BreakPowerup5
-
-		MOV SI, Player2Id
-		CALL FreezeRotation
-		SUB rightPowerupFreezeCount, 1
-		CALL UpdatePowerupsScore
-
-		JMP BreakParseInput
-RightPowerup2:
-		CMP AH, RightPower2
-		JNZ RightPowerup3
-
-		MOV AH, rightPowerupSpeedUpCount
-		CMP AH, 0
-		JZ	BreakPowerup5
-
-		MOV SI, Player2Id
-		CALL SpeedUpOpponentPiece
-		SUB rightPowerupSpeedUpCount, 1
-		CALL UpdatePowerupsScore
-
-		JMP BreakParseInput
-RightPowerup3:
-		CMP AH, RightPower3
-		JNZ RightPowerup4
-
-		MOV AH, rightPowerupRemoveLinesCount
-		CMP AH, 0
-		JZ	BreakPowerup5
-
-		MOV SI, Player2Id
-		CALL RemoveFourLines
-		SUB rightPowerupRemoveLinesCount, 1
-		CALL UpdatePowerupsScore
-
-		JMP BreakParseInput
-RightPowerup4:
-		CMP AH, RightPower4
-		JNZ RightPowerup5
-
-		MOV AH, rightPowerupChangePieceCount
-		CMP AH, 0
-		JZ	BreakPowerup5
-
-		MOV SI, Player2Id
-		CALL ChangePiece
-		SUB rightPowerupChangePieceCount,1
-		CALL UpdatePowerupsScore
-
-		JMP BreakParseInput
-RightPowerup5:
-		CMP AH, RightPower5
-		JNZ BreakParseInput
-
-		MOV AH, rightPowerupInsertTwoLinesCount
-		CMP AH, 0
-		JZ	BreakParseInput
-
-		MOV SI, Player2Id
-		CALL InsertTwoLines
-		SUB rightPowerupInsertTwoLinesCount,1
-		CALL UpdatePowerupsScore
-
 		JMP BreakParseInput
 
 BreakParseInput:
