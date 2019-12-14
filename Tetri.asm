@@ -415,7 +415,9 @@ NAME2 		DB 15
 Ply2Sz		DB ?
 Player2		DB 10 DUP(' ')
 NameSz		EQU 6
-
+;-------Serial Data--------
+Player1Id	DW	0			;current player ID, 0 or 4 depending on player number
+Player2Id	DW	4			;other player ID, 0 or 4 depending on player number
 ;-------General vars-------
 Seconds						DB 99			;Contains the previous second value
 GameFlag					DB 1			;Status of the game
@@ -426,7 +428,7 @@ MAIN    PROC    FAR
 		MOV AX, @DATA   ;SETUP DATA ADDRESS
 		MOV DS, AX      ;MOV DATA ADDRESS TO DS
 		MOV ES, AX
-		
+		CALL InitializeSerialPort
 		CALL GetName
 NewGame:
 		CALL InitializeNewGame
@@ -436,8 +438,10 @@ NewGame:
         mov     BX, 0105H
         INT     10H
 
+
 		CALL DrawGameScr
 		CALL DrawGUIText
+
 
 		MOV SI,0
 		MOV BX,0
@@ -1039,23 +1043,40 @@ BREAK:
 				RET
 RotatePiece		ENDP	
 ;---------------------------
-;This procedure parses input and calls corresponding procedures
+;This procedure reads input from serial and keyboard then parses it
 ;@param			none
 ;@return		none
-ParseInput		PROC	NEAR
-		MOV AH, 1
-		INT 16H
-		JNZ YesInput
-		RET
+ParseInput	PROC	NEAR
+			MOV AH, 1
+			INT 16H
+			JNZ YesInput
+			JMP NoInput
 YesInput:
-		MOV AH, 0
-		INT 16H
+			MOV AH, 0
+			INT 16H
+			CALL SendValueThroughSerial
+			CALL ParseLocalInput
+			RET
+NoInput:
+			CALL ReceiveValueFromSerial
+			CMP AL, 1
+			JZ	NoSerialInput
+			CALL ParseLocalInput
+NoSerialInput:
+			RET
+ParseInput	ENDP
+;---------------------------
+;This procedure parses input and calls corresponding procedures
+;@param			AH: key to parse
+;@return		none
+ParseLocalInput	PROC	NEAR
+
 ExitGame:
 		CMP AH, ESCCode
 		JNZ LeftRotKey
 
 		;------ this should be changed to return to menu instead
-		CALL EndGame
+		;CALL EndGame
 
 		JMP BreakParseInput
 LeftRotKey:
@@ -1065,20 +1086,20 @@ LeftRotKey:
 		CMP leftPieceRotationLock,1 ;check if the rotation is locked
 		JZ LeftRotKeyParsed
 
-		MOV SI, 0
+		MOV SI, Player1Id
 		CALL GetTempPiece
 
-		MOV SI,0
+		MOV SI, Player1Id
 		CALL RotatePiece
 LeftRotKeyParsed:
 		JMP BreakParseInput
 LeftLeftKey:
 		CMP AH, leftLeftCode
 		JNZ LeftDownKey
-		MOV SI, 0
+		MOV SI, Player1Id
 		CALL GetTempPiece
 
-		MOV SI, 0
+		MOV SI, Player1Id
 		MOV BX, 1
 		CALL MovePiece
 
@@ -1086,10 +1107,10 @@ LeftLeftKey:
 LeftDownKey:
 		CMP AH, leftDownCode
 		JNZ LeftRightKey
-		MOV SI, 0
+		MOV SI, Player1Id
 		CALL GetTempPiece
 
-		MOV SI,0
+		MOV SI,Player1Id
 		MOV BX,0
 		CALL MovePiece
 
@@ -1098,10 +1119,10 @@ LeftDownKey:
 LeftRightKey:
 		CMP AH, leftRightCode
 		JNZ RightRotKey
-		MOV SI, 0
+		MOV SI, Player1Id
 		CALL GetTempPiece
 
-		MOV SI,0
+		MOV SI,Player1Id
 		MOV BX,2
 		CALL MovePiece
 
@@ -1113,20 +1134,20 @@ RightRotKey:
 		CMP rightPieceRotationLock,1 ;check if the rotation is locked
 		JZ BreakRotParseInput
 
-		MOV SI, 4
+		MOV SI, Player2Id
 		CALL GetTempPiece
 
-		MOV SI, 4
+		MOV SI, Player2Id
 		CALL RotatePiece
 BreakRotParseInput:
 		JMP BreakParseInput
 RightLeftKey:
 		CMP AH, rightLeftCode
 		JNZ RightDownKey
-		MOV SI, 4
+		MOV SI, Player2Id
 		CALL GetTempPiece
 
-		MOV SI, 4
+		MOV SI, Player2Id
 		MOV BX, 1
 		CALL MovePiece
 
@@ -1134,10 +1155,10 @@ RightLeftKey:
 RightDownKey:
 		CMP AH, rightDownCode
 		JNZ RightRightKey
-		MOV SI, 4
+		MOV SI, Player2Id
 		CALL GetTempPiece
 
-		MOV SI, 4
+		MOV SI, Player2Id
 		MOV BX, 0
 		CALL MovePiece
 
@@ -1145,10 +1166,10 @@ RightDownKey:
 RightRightKey:
 		CMP AH, rightRightCode
 		JNZ LeftPowerup1
-		MOV SI, 4
+		MOV SI, Player2Id
 		CALL GetTempPiece
 		
-		MOV SI, 4
+		MOV SI, Player2Id
 		MOV BX, 2
 		CALL MovePiece
 		JMP BreakParseInput
@@ -1161,7 +1182,7 @@ LeftPowerup1:
 		CMP AH, 0
 		JZ	BreakPowerup1
 
-		MOV SI, 0
+		MOV SI, Player1Id
 		CALL FreezeRotation
 		SUB leftPowerupFreezeCount, 1
 		CALL UpdatePowerupsScore
@@ -1177,7 +1198,7 @@ LeftPowerup2:
 		CMP AH, 0
 		JZ	BreakPowerup2
 
-		MOV SI, 0
+		MOV SI, Player1Id
 		CALL SpeedUpOpponentPiece
 		SUB leftPowerupSpeedUpCount, 1
 		CALL UpdatePowerupsScore
@@ -1192,7 +1213,7 @@ LeftPowerup3:
 		CMP AH, 0
 		JZ	BreakPowerup3
 
-		MOV SI, 0
+		MOV SI, Player1Id
 		CALL RemoveFourLines
 		SUB leftPowerupRemoveLinesCount, 1
 		CALL UpdatePowerupsScore
@@ -1206,7 +1227,7 @@ LeftPowerup4:
 		CMP AH, 0
 		JZ	BreakPowerup4
 
-		MOV SI,0
+		MOV SI, Player1Id
 		CALL ChangePiece
 		SUB leftPowerupChangePieceCount,1
 		CALL UpdatePowerupsScore
@@ -1222,7 +1243,7 @@ LeftPowerup5:
 		JZ	BreakPowerup5
 
 
-		MOV SI,0
+		MOV SI, Player1Id
 		CALL InsertTwoLines
 		SUB leftPowerupInsertTwoLinesCount,1
 		CALL UpdatePowerupsScore
@@ -1238,7 +1259,7 @@ RightPowerup1:
 		CMP AH, 0
 		JZ	BreakPowerup5
 
-		MOV SI, 4
+		MOV SI, Player2Id
 		CALL FreezeRotation
 		SUB rightPowerupFreezeCount, 1
 		CALL UpdatePowerupsScore
@@ -1252,7 +1273,7 @@ RightPowerup2:
 		CMP AH, 0
 		JZ	BreakPowerup5
 
-		MOV SI, 4
+		MOV SI, Player2Id
 		CALL SpeedUpOpponentPiece
 		SUB rightPowerupSpeedUpCount, 1
 		CALL UpdatePowerupsScore
@@ -1266,7 +1287,7 @@ RightPowerup3:
 		CMP AH, 0
 		JZ	BreakPowerup5
 
-		MOV SI, 4
+		MOV SI, Player2Id
 		CALL RemoveFourLines
 		SUB rightPowerupRemoveLinesCount, 1
 		CALL UpdatePowerupsScore
@@ -1280,7 +1301,7 @@ RightPowerup4:
 		CMP AH, 0
 		JZ	BreakPowerup5
 
-		MOV SI,4
+		MOV SI, Player2Id
 		CALL ChangePiece
 		SUB rightPowerupChangePieceCount,1
 		CALL UpdatePowerupsScore
@@ -1294,7 +1315,7 @@ RightPowerup5:
 		CMP AH, 0
 		JZ	BreakParseInput
 
-		MOV SI,4
+		MOV SI, Player2Id
 		CALL InsertTwoLines
 		SUB rightPowerupInsertTwoLinesCount,1
 		CALL UpdatePowerupsScore
@@ -1303,7 +1324,7 @@ RightPowerup5:
 
 BreakParseInput:
 		RET
-ParseInput		ENDP
+ParseLocalInput	ENDP
 ;---------------------------
 ;This Procedure is called in the gameloop to move the pieces downward each second
 ;@param			none
@@ -2882,159 +2903,9 @@ AddTwoLinesBreak:
 					RET
 InsertTwoLines		ENDP
 ;---------------------------
-; OpenFile 	PROC 	NEAR
-
-;     ; Open file
-
-; 	;JNC SUCCESS
-; 	;MOV AH, 4CH
-; 	;INT 21H
-; ;SUCCESS:
-
-;     MOV AH, 3Dh
-;     MOV AL, 0 ; read only
-;     LEA DX, LeftFrameTopFilename
-;     INT 21h
-;     MOV [LeftFrameTopFilehandle], AX
-
-	; MOV AH, 3Dh
-    ; MOV AL, 0 ; read only
-    ; LEA DX, LeftFrameLeftFilename
-    ; INT 21h
-    ; MOV [LeftFrameLeftFilehandle], AX
-
-; 	MOV AH, 3Dh
-;     MOV AL, 0 ; read only
-;     LEA DX, LeftFrameRightFilename
-;     INT 21h
-;     MOV [LeftFrameRightFilehandle], AX
-
-; 	MOV AH, 3Dh
-;     MOV AL, 0 ; read only
-;     LEA DX, LeftFrameBottomFilename
-;     INT 21h
-;     MOV [LeftFrameBottomFilehandle], AX
-
-; 	; MOV AH, 3Dh
-;     ; MOV AL, 0 ; read only
-;     ; LEA DX, rightFrameTopFilename
-;     ; INT 21h
-;     ; MOV [rightFrameTopFilehandle], AX
-
-; 	; MOV AH, 3Dh
-;     ; MOV AL, 0 ; read only
-;     ; LEA DX, rightFrameLeftFilename
-;     ; INT 21h
-;     ; MOV [rightFrameLeftFilehandle], AX
-
-; 	; MOV AH, 3Dh
-;     ; MOV AL, 0 ; read only
-;     ; LEA DX, rightFrameRightFilename
-;     ; INT 21h
-;     ; MOV [rightFrameRightFilehandle], AX
-
-; 	; MOV AH, 3Dh
-;     ; MOV AL, 0 ; read only
-;     ; LEA DX, rightFrameBottomFilename
-;     ; INT 21h
-;     ; MOV [rightFrameBottomFilehandle], AX
-   
-   
-;     RET
-; OpenFile 	ENDP
-; ;---------------------------
-; ReadData 	PROC	NEAR
-;     MOV AH,3Fh
-;     MOV BX, [LeftFrameTopFilehandle]
-;     MOV CX, leftFrameTopWidth*leftFrameTopHeight ; number of bytes to read
-;     LEA DX, leftFrameTopData
-;     INT 21h
-
-    ; MOV AH,3Fh
-    ; MOV BX, [LeftFrameLeftFilehandle]
-    ; MOV CX, leftFrameLeftWidth*leftFrameLeftHeight ; number of bytes to read
-    ; LEA DX, leftFrameLeftData
-    ; INT 21h
-
-;     MOV AH,3Fh
-;     MOV BX, [LeftFrameRightFilehandle]
-;     MOV CX, leftFrameRightWidth*leftFrameRightHeight ; number of bytes to read
-;     LEA DX, leftFrameRightData
-;     INT 21h
-
-;     MOV AH,3Fh
-;     MOV BX, [LeftFrameBottomFilehandle]
-;     MOV CX, leftFrameBottomWidth*leftFrameBottomHeight ; number of bytes to read
-;     LEA DX, leftFrameBottomData
-;     INT 21h
-
-; 	; MOV AH,3Fh
-;     ; MOV BX, [rightFrameTopFilehandle]
-;     ; MOV CX, rightFrameTopWidth*rightFrameTopHeight ; number of bytes to read
-;     ; LEA DX, rightFrameTopData
-;     ; INT 21h
-
-;     ; MOV AH,3Fh
-;     ; MOV BX, [rightFrameLeftFilehandle]
-;     ; MOV CX, rightFrameLeftWidth*rightFrameLeftHeight ; number of bytes to read
-;     ; LEA DX, rightFrameLeftData
-;     ; INT 21h
-
-;     ; MOV AH,3Fh
-;     ; MOV BX, [rightFrameRightFilehandle]
-;     ; MOV CX, rightFrameRightWidth*rightFrameRightHeight ; number of bytes to read
-;     ; LEA DX, rightFrameRightData
-;     ; INT 21h
-
-;     ; MOV AH,3Fh
-;     ; MOV BX, [rightFrameBottomFilehandle]
-;     ; MOV CX, rightFrameBottomWidth*rightFrameBottomHeight ; number of bytes to read
-;     ; LEA DX, rightFrameBottomData
-;     ; INT 21h
-
-
-;     RET
-; ReadData	ENDP 
-; ;---------------------------
-; CloseFile 	PROC	NEAR
-; 	MOV AH, 3Eh
-; 	MOV BX, [leftFrameTopFilehandle]
-; 	INT 21h
-
-	; MOV AH, 3Eh
-	; MOV BX, [leftFrameLeftFilehandle]
-	; INT 21h
-
-; 	MOV AH, 3Eh
-; 	MOV BX, [leftFrameRightFilehandle]
-; 	INT 21h
-
-; 	MOV AH, 3Eh
-; 	MOV BX, [leftFrameBottomFilehandle]
-; 	INT 21h
-
-; 	; MOV AH, 3Eh
-; 	; MOV BX, [rightFrameTopFilehandle]
-; 	; INT 21h
-
-; 	; MOV AH, 3Eh
-; 	; MOV BX, [rightFrameLeftFilehandle]
-; 	; INT 21h
-
-; 	; MOV AH, 3Eh
-; 	; MOV BX, [rightFrameRightFilehandle]
-; 	; INT 21h
-
-; 	; MOV AH, 3Eh
-; 	; MOV BX, [rightFrameBottomFilehandle]
-; 	; INT 21h
-
-
-; 	RET
-; CloseFile 	ENDP
-;---------------------------
-;
-;
+;This procedure draws the left border of the game
+;@param			none
+;@return		none
 DrawLeftBorder	PROC	NEAR
 
 	;------------ice bottom-------------
@@ -3378,5 +3249,73 @@ DrawRightBorder	PROC	NEAR
 	
 				RET
 DrawRightBorder	ENDP
+;-------------------------
+;Initializes the serial port
+;@param			none
+;@return		none
+InitializeSerialPort	PROC	NEAR
+		mov dx,3fbh 			; Line Control Register
+		mov al,10000000b		;Set Divisor Latch Access Bit
+		out dx,al				;Out it
+
+		mov dx,3f8h				;Set LSB byte of the Baud Rate Divisor Latch register.	
+		mov al,0ch			
+		out dx,al
+
+		mov dx,3f9h				;Set MSB byte of the Baud Rate Divisor Latch register.
+		mov al,00h
+		out dx,al
+
+		mov dx,3fbh				;Set port configuration
+		mov al,00011011b
+		out dx, al
+		RET
+InitializeSerialPort	ENDP
+;-------------------------
+;This procedure sends the value in AH through serial
+;@param			AH: value to be sent
+;@return		none
+SendValueThroughSerial	PROC	NEAR
+		push dx
+		push ax
+;Check that Transmitter Holding Register is Empty
+		mov dx , 3FDH ; Line Status Register
+	 	In al , dx ;Read Line Status
+		test al , 00100000b
+		JNZ EmptyLineRegister ;Not empty
+		pop ax
+		pop dx
+		RET
+EmptyLineRegister:
+;If empty put the VALUE in Transmit data register
+		mov dx , 3F8H ; Transmit data register
+		mov al, ah
+		out dx, al
+		pop ax
+		pop dx
+		RET
+SendValueThroughSerial	ENDP
+;-------------------------
+;This procedure receives a byte from serial
+;@param			none
+;@return		AH: byte received, AL: {0: yes input, 1: no input}
+ReceiveValueFromSerial	PROC	NEAR
+;Check that Data is Ready
+		push dx
+		mov dx , 3FDH ; Line Status Register
+		in al , dx
+		test al , 1
+		JNZ SerialInput ;Not Ready
+		pop dx
+		RET		;if 1 return
+SerialInput:
+;If Ready read the VALUE in Receive data register
+		mov dx , 03F8H
+		in al , dx
+		mov ah, al
+		mov al, 0
+		pop dx
+		RET
+ReceiveValueFromSerial	ENDP
 ;-------------------------
 END     MAIN
