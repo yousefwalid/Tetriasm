@@ -375,8 +375,17 @@ RightInsertTwoLinesStringLocY	EQU RightInsertTwoLinesLocY+1
 UnderlineStringLength 	EQU 128
 UnderlineString			DB	"________________________________________________________________________________________________________________________________"
 
+UnderlineStringShortLength 	EQU 80
+UnderlineStringShort			DB	"________________________________________________________________________________"
+
 PressEscToExitStringLength 	EQU 24
 PressEscToExitString 		DB "Press ESC Key to exit..."
+
+ChatRequestStringLength		EQU	49
+ChatRequestString			DB " has sent you a chat request, press F10 to accept"
+
+GameRequestStringLength		EQU 49
+GameRequestString			DB " has sent you a game request, press F10 to accept"
 
 ;; Main screen strings
 
@@ -438,6 +447,9 @@ ChatEscMsgLength  EQU 30
 PlayerId	DW	0			;temp placeholder for parsing
 Player1Id	DW	0			;current player ID, 0 or 4 depending on player number
 Player2Id	DW	4			;other player ID, 0 or 4 depending on player number
+ChatInvitationFlag	DB	0
+GameInvitationFlag	DB 	0
+LatestFlag			DB 	0
 ;-------General vars-------
 Seconds						DB 99			;Contains the previous second value
 GameFlag					DB 1			;Status of the game
@@ -458,6 +470,8 @@ NewGame:
 MAIN    ENDP
 ;---------------------------
 PlayGame	PROC	NEAR
+			CALL InitializeNewGame
+
 			mov     AX, 4F02H
 			mov     BX, 0105H
 			INT     10H
@@ -1852,10 +1866,22 @@ SkipPixel:	INC CX
 			RET
 DrawLogo	ENDP			
 ;---------------------------
+InitializeNewMenu PROC	NEAR
+		MOV ChatInvitationFlag, 0
+		MOV GameInvitationFlag, 0
+		MOV ChatPlayer1X, 0
+		MOV ChatPlayer1Y, 1
+		MOV ChatPlayer2X, 0
+		MOV ChatPlayer2Y, 13
+		RET
+InitializeNewMenu ENDP
+;---------------------------
 ;Procedure to Draw the logo Menu
 ;@param			none			
 ;@return		none
 DrawLogoMenu 	PROC	NEAR
+
+			CALL InitializeNewMenu
 
 			MOV     AX, 4F02H
 			MOV     BX, 0100H
@@ -1883,10 +1909,26 @@ DrawLogoMenu 	PROC	NEAR
 			MOV BL, 15 ;WHITE
 			CALL PrintMessage	
 			
-SelectMode: CALL Wait4Key
+			mov ah, 13h
+			mov cx, UnderlineStringShortLength
+			mov dh, 22
+			mov dl, 0
+			lea bp, UnderlineStringShort
+			mov bx, 07h
+			int 10h
+
+SelectMode: 
+			mov ah,1
+			int 16h
+			JNZ YesKey
+			JMP NoKey
+YesKey:
+			mov ah, 0
+			int 16H
+
 			CMP AH,	EscCode
 			JNZ Check4game
-			
+
 			MOV AH, 00H ; Set video mode
 			MOV AL, 13H ; Mode 13h
 			INT 10H 
@@ -1896,11 +1938,120 @@ SelectMode: CALL Wait4Key
 Check4game:	
 			CMP AH,F1Code
 			JNZ NotF1
+
+			CMP ChatInvitationFlag, 1D
+			JZ YesInvitationFlag
+NoInvitationFlag:
+			MOV AH, 1						;send invitation indication
+			CALL SendValueThroughSerial
+
+			MOV CX, NameSz				;initialize for name
+			LEA DI, Player1
+
+SendChatName1:						;send the name of the player
+			MOV AH, [DI]
+			CALL SendValueThroughSerial
+			LOOP SendChatName1
+
+			JMP NoKey
+
+YesInvitationFlag:
+
+			MOV AH, 11
+			CALL SendValueThroughSerial
+
+			MOV CX, NameSz				;initialize for name
+			LEA DI, Player1
+
+SendChatName2:						;send the name of the player
+			MOV AH, [DI]
+			CALL SendValueThroughSerial
+			LOOP SendChatName2
+
 			CALL EnterChatScreen
 			RET
+
 NotF1:
 			CMP AH,F2Code
-			JNE SelectMode
+			CMP GameInvitationFlag, 1D
+			JZ YesGameInvitationFlag
+NoGameInvitationFlag:
+			MOV AH, 2						;send invitation indication
+			CALL SendValueThroughSerial
+
+			JMP NoKey
+
+YesGameInvitationFlag:
+
+			MOV AH, 22
+			CALL SendValueThroughSerial
+
+			MOV Player1Id, 4
+			MOV Player2Id, 0
+
+			CALL PlayGame
+			RET
+NoKey:
+			CALL ReceiveValueFromSerial
+			CMP AL, 1
+			JZ NoInvitation
+			CMP AH, 1
+			JZ ChatInvitationSent
+			CMP AH, 11
+			JZ ChatInvitationAccepted
+			CMP AH, 2
+			JZ GameInvitationSent
+			CMP AH, 22
+			JZ GameInvitationAccepted
+
+ChatInvitationSent:
+			MOV ChatInvitationFlag, BYTE PTR 1D
+
+			JMP NoInvitation
+
+ChatInvitationAccepted:
+
+			CALL EnterChatScreen
+			RET
+
+			JMP NoInvitation
+
+GameInvitationSent:
+			MOV GameInvitationFlag, BYTE PTR 1D
+			
+			MOV CX, NameSz
+			LEA DI, Player2
+
+	ReceiveName2Game:
+			CALL ReceiveValueFromSerial	;TAKE NAME
+			MOV [DI], AH
+			LOOP ReceiveName2Game
+
+			JMP NoInvitation
+
+GameInvitationAccepted:
+			
+			MOV CX, NameSz			;TAKE NAME
+			LEA DI, Player2
+
+	ReceiveName2Game2:
+			CALL ReceiveValueFromSerial
+			MOV [DI], AH
+			LOOP ReceiveName2Game2
+
+			MOV Player1Id, 0
+			MOV Player2Id, 4
+
+			CALL PlayGame
+			RET
+
+			JMP NoInvitation
+
+
+NoInvitation:
+			JMP SelectMode
+
+
 			CALL DisplayMenu
 			
 			RET
@@ -3333,7 +3484,7 @@ NotMaxLine1X:
 		mov CH, 1
 		MOV CL, 0					;top left corner
 		MOV DH, MaxChatPlayer1Y-1
-		MOV DL, MaxChatPlayer1X-1	;bottom left corner
+		MOV DL, MaxChatPlayer1X-1	;bottom right corner
 		int 10h
 
 NotMaxLine1Y:
