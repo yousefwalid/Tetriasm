@@ -244,11 +244,16 @@ leftPower5				DB  06h		;5 key
 
 ;General ScanCodes
 EnterCode  DB 1CH
+BackspaceCode DB 0EH
 F1Code     DB 3BH
 F2Code     DB 3CH
 F10Code    DB 44H 
 EscCode	   DB 01H
 
+;General AsciiCodes
+EnterASCII EQU 0Dh
+EscASCII   EQU 1Bh
+BackspaceASCII EQU 8h
 ;--------Strings--------
 
 ;; Next and Score Strings
@@ -415,10 +420,24 @@ NAME2 		DB 15
 Ply2Sz		DB ?
 Player2		DB 10 DUP(' ')
 NameSz		EQU 6
+
+;-------Chat Screen--------
+ChatPlayer1X		DB	0
+ChatPlayer1Y		DB	1
+MaxChatPlayer1X		EQU	80
+MaxChatPlayer1Y		EQU	11
+
+ChatPlayer2X		DB	0
+ChatPlayer2Y		DB	13
+MaxChatPlayer2X		EQU 80
+MaxChatPlayer2Y		EQU 23
+
+ChatEscMsg	DB 'Press ESC to return to menu...'
+ChatEscMsgLength  EQU 30
 ;-------Serial Data--------
 PlayerId	DW	0			;temp placeholder for parsing
-Player1Id	DW	4			;current player ID, 0 or 4 depending on player number
-Player2Id	DW	0			;other player ID, 0 or 4 depending on player number
+Player1Id	DW	0			;current player ID, 0 or 4 depending on player number
+Player2Id	DW	4			;other player ID, 0 or 4 depending on player number
 ;-------General vars-------
 Seconds						DB 99			;Contains the previous second value
 GameFlag					DB 1			;Status of the game
@@ -1059,7 +1078,6 @@ YesInput:
 			MOV SI, Player1Id
 			MOV PlayerId, SI
 			CALL ParseLocalInput
-			RET
 NoInput:
 			CALL ReceiveValueFromSerial
 			CMP AL, 1
@@ -1080,7 +1098,7 @@ ExitGame:
 		JNZ LeftRotKey
 
 		;------ this should be changed to return to menu instead
-		;CALL EndGame
+		CALL EndGame
 
 		JMP BreakParseInput
 LeftRotKey:
@@ -1706,9 +1724,13 @@ GetMessage		ENDP
 ;@param			DH (Y)  DL(X)
 ;@return		none
 MoveCursor		PROC 	NEAR
+				push ax
+				push bx
 				MOV AH,02H          ;Move Cursor
 				XOR BH,BH
 				INT 10H
+				pop bx
+				pop ax
 				RET
 MoveCursor		ENDP
 ;---------------------------
@@ -1857,11 +1879,13 @@ SelectMode: CALL Wait4Key
 			MOV AH, 4CH     ;SETUP FOR EXIT
 			INT 21H         ;RETURN CONTROL TO DOS
 			
-Check4game:	CMP AH,F2Code		
+Check4game:	
+			CMP AH,F1Code
+			JNZ NotF1
+			CALL EnterChatScreen
+NotF1:
+			CMP AH,F2Code		
 			JNE SelectMode
-			
-			
-			
 			
 			RET
 DrawLogoMenu 	ENDP
@@ -1887,7 +1911,7 @@ GetName		PROC 	NEAR
 				CALL MoveCursor
 
 
-				MOV DX,OFFSET NAME1
+				MOV DX, OFFSET NAME1
 				CALL GetMessage
 
 
@@ -3192,6 +3216,7 @@ ReceiveValueFromSerial	PROC	NEAR
 		in al , dx
 		test al , 1
 		JNZ SerialInput ;Not Ready
+		mov al, 1
 		pop dx
 		RET		;if 1 return
 SerialInput:
@@ -3203,5 +3228,204 @@ SerialInput:
 		pop dx
 		RET
 ReceiveValueFromSerial	ENDP
+;-------------------------
+;This procedure renders the chat screen and contains it's logic
+;@param		none
+;@return	none
+EnterChatScreen	PROC	NEAR
+		mov ah, 0		;Enter text mode
+		mov al, 3h
+		int 10h
+		MOV CX, 0D
+DRAWHORLINE:
+		MOV DH, 11
+		MOV DL, CL
+		CALL MoveCursor
+		MOV AH, 2
+		MOV DL, '_'
+		INT 21H
+		INC CX
+		CMP CX, 80D
+		JNZ DRAWHORLINE
+
+		MOV BP, OFFSET Player1 	;Player1 name
+		MOV CX, NameSz			;Size of string
+		MOV DH, 0
+		MOV DL, 1
+		MOV BL, 3				;color
+		CALL PrintMessage
+
+		MOV BP, OFFSET Player2 	;Player2 name
+		MOV CX, NameSz			;Size of string
+		MOV DH, 12
+		MOV DL, 1
+		MOV BL, 3				;color
+		CALL PrintMessage
+
+		MOV CX, 0D
+DrawNotificationLine:
+		MOV DH, 23
+		MOV DL, CL
+		CALL MoveCursor
+		MOV AH, 2
+		MOV DL, '_'
+		INT 21H
+		INC CX
+		CMP CX, 80D
+		JNZ DrawNotificationLine
+
+		MOV BP, OFFSET ChatEscMsg 	;Player2 name
+		MOV CX, ChatescMsgLength			;Size of string
+		MOV DH, 24
+		MOV DL, 0
+		MOV BL, 15
+		CALL PrintMessage
+
+CHATLOOP:
+		MOV DH, ChatPlayer1Y
+		MOV DL, ChatPlayer1X
+		CALL MoveCursor
+		MOV AH, 1
+		INT 16H
+		JNZ ChatYesInput
+		JMP ChatNoInput
+ChatYesInput:
+		MOV AH, 0
+		INT 16H
+		XCHG AH, AL					;now we deal with ascii codes
+		CALL SendValueThroughSerial	;send key to serial
+
+		CMP AH, EscASCII	;check if esc
+		JNZ NotChatEscKey
+	;;;;;should be changed to return to menu
+		MOV AH, 4CH
+		INT 21h		
+NotChatEscKey:
+		CMP AH, BackspaceASCII
+		JNZ NotChatBackspaceKey
+		
+		CMP ChatPlayer1X, 0
+		JZ SkipBackspace
+
+		DEC ChatPlayer1X
+
+		MOV DH, ChatPlayer1Y
+		MOV DL, ChatPlayer1X
+		CALL MoveCursor
+
+		MOV AH, 2
+		MOV DL, ' '
+		INT 21H
+SkipBackspace:
+		JMP ChatNoInput
+NotChatBackspaceKey:
+		CMP AH, EnterASCII ;check if enter
+		JNZ NotChatEnterKey
+		JMP GoToNewLine1	;to insert a new line
+NotChatEnterKey:	;not esc or enter, then it's a char and we need to print it
+
+		MOV DH, ChatPlayer1Y
+		MOV DL, ChatPlayer1X
+		CALL MoveCursor
+
+		mov dl, ah
+		mov ah, 2
+		int 21h
+
+
+		INC ChatPlayer1X
+		CMP ChatPlayer1X, MaxChatPlayer1X
+		JNZ	NotMaxLine1X
+
+GoToNewLine1:
+		MOV ChatPlayer1X, 0D
+		INC ChatPlayer1Y
+NotMaxLine1X:
+
+		CMP ChatPlayer1Y, MaxChatPlayer1Y
+		JNZ NotMaxLine1Y
+
+		DEC ChatPlayer1Y
+
+		mov ax,0601h
+		mov bh,07
+		mov CH, 1
+		MOV CL, 0					;top left corner
+		MOV DH, MaxChatPlayer1Y-1
+		MOV DL, MaxChatPlayer1X-1	;bottom left corner
+		int 10h
+
+NotMaxLine1Y:
+
+ChatNoInput:
+		CALL ReceiveValueFromSerial
+		CMP AL, 1
+		JZ	ChatNoSerialInput
+
+		CMP AH, EscASCII	;check if esc
+		JNZ NotChatEscKey2
+	;;;;;should be changed to return to menu
+		MOV AH, 4CH
+		INT 21h		
+NotChatEscKey2:
+		CMP AH, BackspaceASCII
+		JNZ NotChatBackspaceKey2
+		
+		CMP ChatPlayer2X, 0
+		JZ SkipBackspace2
+
+		DEC ChatPlayer2X
+
+		MOV DH, ChatPlayer2Y
+		MOV DL, ChatPlayer2X
+		CALL MoveCursor
+
+		MOV AH, 2
+		MOV DL, ' '
+		INT 21H
+SkipBackspace2:
+		JMP CHATLOOP
+NotChatBackspaceKey2:
+		CMP AH, EnterASCII ;check if enter
+		JNZ NotChatEnterKey2
+		JMP GoToNewLine2	;to insert a new line
+NotChatEnterKey2:	;not esc or enter, then it's a char and we need to print it
+
+		MOV DH, ChatPlayer2Y
+		MOV DL, ChatPlayer2X
+		CALL MoveCursor
+
+		mov dl, ah
+		mov ah, 2
+		int 21h				;display char in ah (char received)
+
+		INC ChatPlayer2X
+		CMP ChatPlayer2X, MaxChatPlayer2X
+		JNZ	NotMaxLine2X
+
+GoToNewLine2:
+		MOV ChatPlayer2X, 0D
+		INC ChatPlayer2Y
+NotMaxLine2X:
+
+		CMP ChatPlayer2Y, MaxChatPlayer2Y
+		JNZ NotMaxLine2Y
+
+		DEC ChatPlayer2Y
+
+		mov ax,0601h
+		mov bh,07
+		mov CH, 13
+		MOV CL, 0					;top left corner
+		MOV DH, MaxChatPlayer2Y-1
+		MOV DL, MaxChatPlayer2X-1	;bottom left corner
+		int 10h
+
+NotMaxLine2Y:
+
+ChatNoSerialInput:
+		JMP CHATLOOP		
+
+EnterChatScreen ENDP
 ;-------------------------
 END     MAIN
