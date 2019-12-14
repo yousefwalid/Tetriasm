@@ -449,7 +449,7 @@ Player1Id	DW	0			;current player ID, 0 or 4 depending on player number
 Player2Id	DW	4			;other player ID, 0 or 4 depending on player number
 ChatInvitationFlag	DB	0
 GameInvitationFlag	DB 	0
-LatestFlag			DB 	0
+IngameFlag			DB 	0
 ;-------General vars-------
 Seconds						DB 99			;Contains the previous second value
 GameFlag					DB 1			;Status of the game
@@ -479,6 +479,27 @@ PlayGame	PROC	NEAR
 			CALL DrawGameScr
 			CALL DrawGUIText
 
+
+			CMP Player1Id, 0
+			JZ 	KeepSendingForStart
+			JMP KeepReceivingForStart
+
+KeepSendingForStart:
+			MOV AH, 5	;FLAG TO START GAME
+			CALL SendValueThroughSerial
+			CALL ReceiveValueFromSerial	;check for receive
+			CMP AL, 1
+			JNZ	StGame
+			JMP KeepSendingForStart
+
+KeepReceivingForStart:
+			CALL ReceiveValueFromSerial
+			CMP AL, 1
+			JZ 	KeepReceivingForStart
+
+			MOV AH, 5
+			CALL SendValueThroughSerial
+StGame:
 			MOV SI,0
 			MOV BX,0
 			CALL GetTempNextPiece
@@ -490,6 +511,7 @@ PlayGame	PROC	NEAR
 			CALL GetTempNextPiece
 			CALL SetNextPieceData
 			CALL GenerateRandomPiece
+
 
 GAMELP:	
 			CALL ParseInput
@@ -538,6 +560,8 @@ InitializeNewGame 	PROC	NEAR
 					MOV PositionInLogoFile,0
 					MOV Seconds,99		
 					MOV GameFlag, 1
+					MOV IngameFlag, 1
+
 					RET
 InitializeNewGame 	ENDP
 ;---------------------------
@@ -3302,7 +3326,7 @@ InitializeSerialPort	PROC	NEAR
 		out dx,al				;Out it
 
 		mov dx,3f8h				;Set LSB byte of the Baud Rate Divisor Latch register.	
-		mov al,0ch			
+		mov al,01h			
 		out dx,al
 
 		mov dx,3f9h				;Set MSB byte of the Baud Rate Divisor Latch register.
