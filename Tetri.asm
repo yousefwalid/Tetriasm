@@ -1940,39 +1940,7 @@ GetName		PROC 	NEAR
 
 				WAIT4Enter: CALL Wait4Key			
 							CMP AH,	EnterCode
-							JNE WAIT4Enter
-							
-				;Call ClearScreen
-				MOV AH, 00H ; Set video mode
-				MOV AL, 13H ; Mode 13h
-				INT 10H 
-
-				MOV BP, OFFSET Menu11 ; ES: BP POINTS TO THE TEXT
-				MOV CX,M11sz ;SIZE OF STRING
-				MOV DH, 6 ;ROW TO PLACE STRING
-				MOV DL, 10 ; COLUMN TO PLACE STRING
-				MOV BL, 15 ;WHITE				
-				CALL PrintMessage
-
-				MOV DH, 11 ;ROW TO PLACE CURSOR
-				MOV DL, 10 ; COLUMN TO PLACE CURSOR
-				CALL MoveCursor
-
-
-				MOV DX,OFFSET NAME2
-				CALL GetMessage
-
-
-				MOV BP, OFFSET Menu12 ; ES: BP POINTS TO THE TEXT
-				MOV CX, M12sz ; LENGTH OF THE STRING
-				MOV DH, 14 ;ROW TO PLACE STRING
-				MOV DL, 10 ; COLUMN TO PLACE STRING
-				MOV BL, 15 ;WHITE
-				CALL PrintMessage
-							
-				WAIT4Enter2: CALL Wait4Key
-							 CMP AH,	EnterCode
-							 JNE WAIT4Enter2			
+							JNE WAIT4Enter			
 			RET
 GetName		ENDP			
 ;---------------------------
