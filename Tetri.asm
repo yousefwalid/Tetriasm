@@ -442,6 +442,7 @@ Player2Id	DW	4			;other player ID, 0 or 4 depending on player number
 Seconds						DB 99			;Contains the previous second value
 GameFlag					DB 1			;Status of the game
 GRAYBLOCKCLR				EQU	 8		;color of gray solid blocks
+EscPressed					DB 0
 ;---------------------------
 .CODE         
 MAIN    PROC    FAR
@@ -450,47 +451,53 @@ MAIN    PROC    FAR
 		MOV ES, AX
 		CALL InitializeSerialPort
 		CALL GetName
-NewGame:
-		CALL InitializeNewGame
-		CALL DisplayMenu 
-;-----------------------------------------------
-		mov     AX, 4F02H
-        mov     BX, 0105H
-        INT     10H
-
-
-		CALL DrawGameScr
-		CALL DrawGUIText
-
-
-		MOV SI,0
-		MOV BX,0
-		CALL GetTempNextPiece
-		CALL SetNextPieceData
-		CALL GenerateRandomPiece
-
-		MOV SI,4
-		MOV BX,0
-		CALL GetTempNextPiece
-		CALL SetNextPieceData
-		CALL GenerateRandomPiece
-
-GAMELP:	
-		CALL ParseInput
-		CALL PieceGravity
-		MOV AL,GameFlag
-		CMP AL,1
-		JNZ Finished
-		JMP GAMELP
-
-Finished:
-		CALL GameEnded
-		CALL EndGameMenu
+NewGame:						
+		CALL DrawLogoMenu
 		JMP NewGame
 		
 MAIN    ENDP
 ;---------------------------
+PlayGame	PROC	NEAR
+			mov     AX, 4F02H
+			mov     BX, 0105H
+			INT     10H
+
+			CALL DrawGameScr
+			CALL DrawGUIText
+
+			MOV SI,0
+			MOV BX,0
+			CALL GetTempNextPiece
+			CALL SetNextPieceData
+			CALL GenerateRandomPiece
+
+			MOV SI,4
+			MOV BX,0
+			CALL GetTempNextPiece
+			CALL SetNextPieceData
+			CALL GenerateRandomPiece
+
+GAMELP:	
+			CALL ParseInput
+			CMP EscPressed, 1
+			JNZ	NoEsc
+			RET
+NoEsc:
+			CALL PieceGravity
+			MOV AL,GameFlag
+			CMP AL,1
+			JNZ Finished
+			JMP GAMELP
+
+Finished:
+			CALL GameEnded
+			CALL EndGameMenu
+
+			RET
+PlayGame	ENDP
+;---------------------------
 InitializeNewGame 	PROC	NEAR
+					MOV EscPressed, 0
 					MOV rightPieceSpeed , 1			;contains the falling speed of the right piece
 					MOV Player2Score , 0
 					MOV rightPowerupFreezeCount	, 0
@@ -1098,8 +1105,9 @@ ExitGame:
 		JNZ LeftRotKey
 
 		;------ this should be changed to return to menu instead
-		CALL EndGame
-
+		;CALL EndGame
+		MOV EscPressed, 1
+		RET
 		JMP BreakParseInput
 LeftRotKey:
 		CMP AH, leftRotCode
@@ -1780,7 +1788,7 @@ OpenLogoFile 	ENDP
 ReadLogoData	 PROC 	NEAR
 
 			MOV AH,3Fh
-			MOV BX, LogoFilehandle
+			MOV BX, [LogoFilehandle]
 			MOV CX, 1	 ; number of bytes to read
 			INC PositionInLogoFile
 			LEA DX, LogoData
@@ -1802,8 +1810,10 @@ CloseLogoFile 	ENDP
 ;@param			BX->array of pixels to draw	Make Sure in proper GFX mode			
 ;@return		none
 DrawLogo 	PROC 	NEAR
+			MOV positionInLogoFile, 0
+			CALL ClearFrameData
 			CALL OpenLogoFile
-
+			
 			LEA BX , LogoData 
 			MOV CX,LogostX
 			MOV DX,LogostY
@@ -1846,6 +1856,10 @@ DrawLogo	ENDP
 ;@param			none			
 ;@return		none
 DrawLogoMenu 	PROC	NEAR
+
+			MOV     AX, 4F02H
+			MOV     BX, 0100H
+			INT     10H
 			CALL DrawLogo
 			
 			MOV BP, OFFSET Logo1 ; ES: BP POINTS TO THE TEXT
@@ -1883,9 +1897,11 @@ Check4game:
 			CMP AH,F1Code
 			JNZ NotF1
 			CALL EnterChatScreen
+			RET
 NotF1:
-			CMP AH,F2Code		
+			CMP AH,F2Code
 			JNE SelectMode
+			CALL DisplayMenu
 			
 			RET
 DrawLogoMenu 	ENDP
@@ -1967,12 +1983,7 @@ DisplayMenu 	PROC     NEAR
 				
 				CALL InitializeNewGame
 
-					;Game Logo Screen
-				MOV     AX, 4F02H
-				MOV     BX, 0100H
-				INT     10H
-												
-				CALL DrawLogoMenu			
+				;Game Logo Screen			
 				
 				MOV AH, 00H ; Set video mode
 				MOV AL, 13H ; Mode 13h
@@ -2037,6 +2048,9 @@ DisplayMenu 	PROC     NEAR
 					MOV AH, RPly1
 					AND AH, RPly2
 					JZ  Wait4Ready
+
+					CALL PlayGame
+
 					RET		
 DisplayMenu      	ENDP
 ;---------------------------
@@ -2101,12 +2115,12 @@ ControlOp:		CALL Wait4Key
 				CMP AH, EnterCode
 				JNE CkEsc
 				RET
+				
 CkEsc:			CMP AH,EscCode
 				JNE ControlOp
 				CALL EndGame
-
 				
-				
+				RET
 EndGameMenu		ENDP
 ;---------------------------------------------------
 ;Parses score number into text to be displayed on the screen
@@ -3298,8 +3312,7 @@ ChatYesInput:
 		CMP AH, EscASCII	;check if esc
 		JNZ NotChatEscKey
 	;;;;;should be changed to return to menu
-		MOV AH, 4CH
-		INT 21h		
+		RET
 NotChatEscKey:
 		CMP AH, BackspaceASCII
 		JNZ NotChatBackspaceKey
@@ -3365,8 +3378,9 @@ ChatNoInput:
 		CMP AH, EscASCII	;check if esc
 		JNZ NotChatEscKey2
 	;;;;;should be changed to return to menu
-		MOV AH, 4CH
-		INT 21h		
+		;MOV AH, 4CH
+		;INT 21h	
+		RET	
 NotChatEscKey2:
 		CMP AH, BackspaceASCII
 		JNZ NotChatBackspaceKey2
@@ -3427,5 +3441,26 @@ ChatNoSerialInput:
 		JMP CHATLOOP		
 
 EnterChatScreen ENDP
+;-------------------------
+ClearFrameData	PROC	NEAR
+		PUSH CX
+		PUSH DI
+		MOV CX, WideFrameHEIGHT*WideFrameWIDTH
+		LEA DI, WideFrameData
+ClearFrame1:
+		MOV [DI], BYTE PTR 0
+		INC DI
+		LOOP ClearFrame1
+
+		MOV CX, TallFrameHEIGHT*TallFrameWIDTH
+		LEA DI, TallFrameData		
+ClearFrame2:
+		MOV [DI], BYTE PTR 0
+		INC DI
+		LOOP ClearFrame2
+		POP DI
+		POP CX
+		RET
+ClearFrameData	ENDP
 ;-------------------------
 END     MAIN
