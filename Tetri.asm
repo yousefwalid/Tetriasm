@@ -381,11 +381,18 @@ UnderlineStringShort			DB	"_____________________________________________________
 PressEscToExitStringLength 	EQU 24
 PressEscToExitString 		DB "Press ESC Key to exit..."
 
-ChatRequestStringLength		EQU	49
-ChatRequestString			DB " has sent you a chat request, press F10 to accept"
+ChatRequestStringLength		EQU	48
+ChatRequestString			DB " has sent you a chat request, press F1 to accept"
 
-GameRequestStringLength		EQU 49
-GameRequestString			DB " has sent you a game request, press F10 to accept"
+ChatSentStringLength		equ 32
+ChatSentString				DB "You have sent a chat request to "
+
+GameRequestStringLength		EQU 48
+GameRequestString			DB " has sent you a game request, press F2 to accept"
+
+GameSentStringLength		EQU 32
+GameSentString 				DB "You have sent a game request to "
+
 
 ;; Main screen strings
 
@@ -424,10 +431,10 @@ RPly2  DB  0
 SPACE 		DB ' '
 NAME1		DB 15
 Ply1Sz		DB ?
-Player1		DB 10 DUP(' ')
+Player1		DB 15 DUP(' ')
 NAME2 		DB 15
 Ply2Sz		DB ?
-Player2		DB 10 DUP(' ')
+Player2		DB 15 DUP(' ')
 NameSz		EQU 6
 
 ;-------Chat Screen--------
@@ -450,6 +457,7 @@ Player2Id	DW	4			;other player ID, 0 or 4 depending on player number
 ChatInvitationFlag	DB	0
 GameInvitationFlag	DB 	0
 IngameFlag			DB 	0
+ConnectionCreatedFlag	DB	0
 ;-------General vars-------
 Seconds						DB 99			;Contains the previous second value
 GameFlag					DB 1			;Status of the game
@@ -479,26 +487,6 @@ PlayGame	PROC	NEAR
 			CALL DrawGameScr
 			CALL DrawGUIText
 
-
-			CMP Player1Id, 0
-			JZ 	KeepSendingForStart
-			JMP KeepReceivingForStart
-
-KeepSendingForStart:
-			MOV AH, 5	;FLAG TO START GAME
-			CALL SendValueThroughSerial
-			CALL ReceiveValueFromSerial	;check for receive
-			CMP AL, 1
-			JNZ	StGame
-			JMP KeepSendingForStart
-
-KeepReceivingForStart:
-			CALL ReceiveValueFromSerial
-			CMP AL, 1
-			JZ 	KeepReceivingForStart
-
-			MOV AH, 5
-			CALL SendValueThroughSerial
 StGame:
 			MOV SI,0
 			MOV BX,0
@@ -512,6 +500,27 @@ StGame:
 			CALL SetNextPieceData
 			CALL GenerateRandomPiece
 
+
+			CMP Player1Id, 0
+			JZ 	ChooseLevel
+			JMP KeepReceivingForStart
+
+ChooseLevel:
+			mov ah, 0
+			int 16h
+
+			MOV AH, 5	;FLAG TO START GAME
+			CALL SendValueThroughSerial
+
+			JMP GAMELP
+
+KeepReceivingForStart:
+
+			CALL ReceiveValueFromSerial
+			CMP AL, 1
+			JZ 	KeepReceivingForStart
+
+			JMP GAMELP
 
 GAMELP:	
 			CALL ParseInput
@@ -1900,6 +1909,54 @@ InitializeNewMenu PROC	NEAR
 		RET
 InitializeNewMenu ENDP
 ;---------------------------
+CreateNameConnection	PROC	NEAR
+						
+			; 1)  Send Signal 1
+			; 2)  Wait for signal:
+			;         if signal = 1
+			;             Send Signal 2
+			;             go to master
+			;         if signal = 2
+			;             go to slave
+			; 3)  Master:
+			;         Send Name
+			;         Receive Name
+			; 3') Slave:
+			;         Receive Name
+			;         Send Name
+			MOV ConnectionCreatedFlag, 1D
+			MOV AH, 10					;signal for wakeup
+			CALL SendValueThroughSerial
+
+WaitForSignal:
+			CALL ReceiveValueFromSerial
+			CMP AL, 1
+			JZ	WaitForSignal
+
+			CMP AH, 10
+			JZ SigIs1
+			JMP SigIs2
+
+SigIs1:
+			MOV AH, 20
+			CALL SendValueThroughSerial
+			JMP Master
+SigIs2:
+			; MOV AH, 10
+			; CALL SendValueThroughSerial		;dummy signal to stay in sync
+			JMP Slave
+Master:
+			CALL SendNameThroughSerial
+			CALL ReceiveNameFromSerial
+			RET
+	;;;end master;;;
+Slave:
+			CALL ReceiveNameFromSerial
+			CALL SendNameThroughSerial
+			RET
+
+CreateNameConnection	ENDP
+;---------------------------
 ;Procedure to Draw the logo Menu
 ;@param			none			
 ;@return		none
@@ -1940,8 +1997,11 @@ DrawLogoMenu 	PROC	NEAR
 			lea bp, UnderlineStringShort
 			mov bx, 07h
 			int 10h
-
-SelectMode: 
+ 
+			CMP ConnectionCreatedFlag, 1	;check if a connection has been made before
+			JZ ListeningEnded
+			CALL CreateNameConnection
+ListeningEnded:
 			mov ah,1
 			int 16h
 			JNZ YesKey
@@ -1969,13 +2029,19 @@ NoInvitationFlag:
 			MOV AH, 1						;send invitation indication
 			CALL SendValueThroughSerial
 
-			MOV CX, NameSz				;initialize for name
-			LEA DI, Player1
+			LEA BP, ChatSentString
+			MOV CX, ChatSentStringLength
+			MOV BL, 15
+			MOV DH, 23
+			MOV DL, 0
+			CALL PrintMessage
 
-SendChatName1:						;send the name of the player
-			MOV AH, [DI]
-			CALL SendValueThroughSerial
-			LOOP SendChatName1
+			LEA BP, Player2
+			MOV CX, NameSz
+			MOV BL, 15
+			MOV DH, 23
+			MOV DL, ChatSentStringLength
+			CALL PrintMessage
 
 			JMP NoKey
 
@@ -1983,14 +2049,6 @@ YesInvitationFlag:
 
 			MOV AH, 11
 			CALL SendValueThroughSerial
-
-			MOV CX, NameSz				;initialize for name
-			LEA DI, Player1
-
-SendChatName2:						;send the name of the player
-			MOV AH, [DI]
-			CALL SendValueThroughSerial
-			LOOP SendChatName2
 
 			CALL EnterChatScreen
 			RET
@@ -2002,6 +2060,20 @@ NotF1:
 NoGameInvitationFlag:
 			MOV AH, 2						;send invitation indication
 			CALL SendValueThroughSerial
+
+			LEA BP, GameSentString
+			MOV CX, GameSentStringLength
+			MOV BL, 15
+			MOV DH, 23
+			MOV DL, 0
+			CALL PrintMessage
+
+			LEA BP, Player2
+			MOV CX, NameSz
+			MOV BL, 15
+			MOV DH, 23
+			MOV DL, GameSentStringLength
+			CALL PrintMessage
 
 			JMP NoKey
 
@@ -2018,7 +2090,7 @@ YesGameInvitationFlag:
 NoKey:
 			CALL ReceiveValueFromSerial
 			CMP AL, 1
-			JZ NoInvitation
+			JZ NoInvitation1
 			CMP AH, 1
 			JZ ChatInvitationSent
 			CMP AH, 11
@@ -2031,6 +2103,20 @@ NoKey:
 ChatInvitationSent:
 			MOV ChatInvitationFlag, BYTE PTR 1D
 
+			LEA BP, Player2
+			MOV CX, NameSz
+			MOV BL, 15
+			MOV DH, 23
+			MOV DL, 0
+			CALL PrintMessage
+
+			LEA BP, ChatRequestString
+			MOV CX, ChatRequestStringLength
+			MOV BL, 15
+			MOV DH, 23
+			MOV DL, 6
+			CALL PrintMessage
+
 			JMP NoInvitation
 
 ChatInvitationAccepted:
@@ -2042,15 +2128,22 @@ ChatInvitationAccepted:
 
 GameInvitationSent:
 			MOV GameInvitationFlag, BYTE PTR 1D
-			
+
+			LEA BP, Player2
 			MOV CX, NameSz
-			LEA DI, Player2
+			MOV BL, 15
+			MOV DH, 23
+			MOV DL, 0
+			CALL PrintMessage
 
-	ReceiveName2Game:
-			CALL ReceiveValueFromSerial	;TAKE NAME
-			MOV [DI], AH
-			LOOP ReceiveName2Game
+			LEA BP, GameRequestString
+			MOV CX, GameRequestStringLength
+			MOV BL, 15
+			MOV DH, 23
+			MOV DL, 6
+			CALL PrintMessage
 
+NoInvitation1:
 			JMP NoInvitation
 
 GameInvitationAccepted:
@@ -2073,7 +2166,7 @@ GameInvitationAccepted:
 
 
 NoInvitation:
-			JMP SelectMode
+			JMP ListeningEnded
 
 
 			CALL DisplayMenu
@@ -3326,7 +3419,7 @@ InitializeSerialPort	PROC	NEAR
 		out dx,al				;Out it
 
 		mov dx,3f8h				;Set LSB byte of the Baud Rate Divisor Latch register.	
-		mov al,01h			
+		mov al,0ch			
 		out dx,al
 
 		mov dx,3f9h				;Set MSB byte of the Baud Rate Divisor Latch register.
@@ -3362,6 +3455,50 @@ EmptyLineRegister:
 		pop dx
 		RET
 SendValueThroughSerial	ENDP
+;-------------------------
+;This procedure sends name to serial
+;@param		none
+;@return	none
+SendNameThroughSerial	PROC	NEAR
+		MOV CX, NameSz
+		LEA DI, Player1
+
+loopthruName:
+		mov dx , 3FDH ; Line Status Register
+		AGAIN: In al , dx ;Read Line Status
+		test al , 00100000b
+		JZ AGAIN ;Not empty
+		;If empty put the VALUE in Transmit data register
+		mov dx, 3F8H ; Transmit data register
+		mov al,	[DI]
+		out dx , al
+		INC DI
+		loop loopthruName
+
+		RET
+SendNameThroughSerial	ENDP
+;-------------------------
+;This procedure receives name from serial
+;@param		none
+;@return	none
+ReceiveNameFromSerial	PROC	NEAR
+		MOV CX, NameSz
+		LEA DI, Player2
+
+loopthruName2:
+		mov dx , 3FDH ; Line Status Register
+		CHK: in al , dx
+		test al , 1
+		JZ CHK ;Not Ready
+		;If Ready read the VALUE in Receive data register
+		mov dx , 03F8H
+		in al , dx
+		mov [DI] , al
+		INC DI
+		loop loopthruName2
+
+		RET
+ReceiveNameFromSerial	ENDP
 ;-------------------------
 ;This procedure receives a byte from serial
 ;@param			none
