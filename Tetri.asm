@@ -393,6 +393,18 @@ GameRequestString			DB " has sent you a game request, press F2 to accept"
 GameSentStringLength		EQU 32
 GameSentString 				DB "You have sent a game request to "
 
+ChooseLevelStringLength		EQU 28
+ChooseLevelString			DB "Choose a level: Press 1 or 2"
+
+WaitForLevel1StringLength	EQU 12
+WaitForLevel1String			DB "Waiting for "
+
+WaitForLevel2StringLength	EQU 16
+WaitForLevel2String			DB " to choose level"
+
+
+ClearRowStringLength			EQU	80				
+ClearRowString					DB "                                                                               "
 
 ;; Main screen strings
 
@@ -488,6 +500,7 @@ PlayGame	PROC	NEAR
 			CALL DrawGameScr
 			CALL DrawGUIText
 
+
 StGame:
 			MOV SI,0
 			MOV BX,0
@@ -501,40 +514,7 @@ StGame:
 			CALL SetNextPieceData
 			CALL GenerateRandomPiece
 
-
-			CMP Player1Id, 0
-			JZ 	ChooseLevel
-			JMP KeepReceivingForStart
-
-ChooseLevel:
-			mov ah, 0 ;Wait 4 key
-			int 16h
-			
-			cmp al,'1'
-			JE  Key1PressedM
-			
-			cmp al,'2'
-			JNE ChooseLevel
-			CALL LevelUp
-
-Key1PressedM:						
-			
-			;CALL SendValueThroughSerial
-			MOV AH, AL
-			CALL SendValueThroughSerial
-			JMP GAMELP
-
-KeepReceivingForStart:
-
-			CALL ReceiveValueFromSerial
-			CMP AL, 1
-			JZ 	KeepReceivingForStart
-			CMP AH,'1'
-			JE GAMELP
-			CMP AH,'2'
-			JNE KeepReceivingForStart
-			CALL LevelUP		
-			JMP GAMELP
+			CALL TakeLevelInput
 
 GAMELP:	
 			CALL ParseInput
@@ -588,6 +568,111 @@ InitializeNewGame 	PROC	NEAR
 					
 					RET
 InitializeNewGame 	ENDP
+;---------------------------
+TakeLevelInput	PROC	NEAR
+			CMP Player1Id, 0
+			JZ 	ChooseLevel
+			JMP KeepReceivingForStart2
+
+ChooseLevel:
+
+			LEA BP, ChooseLevelString
+			mov cx, ChooseLevelStringLength
+			mov BL, 7
+			mov dh, 47
+			mov dl, 0	
+
+			CALL PrintMessage		
+
+			mov ah, 0 ;Wait 4 key
+			int 16h
+
+			CALL ClearGameNotificationBar
+
+			LEA BP, PressEscToExitString
+			mov cx, PressEscToExitStringLength
+			mov BL, 7
+			mov dh, 47
+			mov dl, 0
+
+			CALL PrintMessage
+			
+			cmp al,'1'
+			JE  Key1PressedM
+			
+			cmp al,'2'
+			JNE ChooseLevel
+			CALL LevelUp
+
+Key1PressedM:						
+			
+			;CALL SendValueThroughSerial
+			MOV AH, AL
+			CALL SendValueThroughSerial
+			RET
+
+KeepReceivingForStart2:
+
+			LEA BP, WaitForLevel1String
+			mov cx, WaitForLevel1StringLength
+			mov BL, 7
+			mov dh, 47
+			mov dl, 0
+
+			CALL PrintMessage
+
+			LEA BP, Player2
+			mov cx, NameSz
+			mov BL, 7
+			mov dh, 47
+			mov dl, WaitForLevel1StringLength
+
+			CALL PrintMessage
+
+			LEA BP, WaitForLevel2String
+			mov cx, WaitForLevel2StringLength
+			mov BL, 7
+			mov dh, 47
+			mov dl, WaitForLevel1StringLength+NameSz
+
+			CALL PrintMessage
+
+KeepReceivingForStart:
+
+			CALL ReceiveValueFromSerial
+			CMP AL, 1
+			JZ 	KeepReceivingForStart
+			CMP AH,'1'
+			JNZ KeyPressedNotOne
+
+			CALL ClearGameNotificationBar
+
+			LEA BP, PressEscToExitString
+			mov cx, PressEscToExitStringLength
+			mov BL, 7
+			mov dh, 47
+			mov dl, 0
+
+			CALL PrintMessage
+
+			RET
+KeyPressedNotOne:
+			CMP AH,'2'
+			JNE KeepReceivingForStart
+			CALL LevelUP	
+
+			CALL ClearGameNotificationBar
+
+			LEA BP, PressEscToExitString
+			mov cx, PressEscToExitStringLength
+			mov BL, 7
+			mov dh, 47
+			mov dl, 0
+
+			CALL PrintMessage
+
+			RET
+TakeLevelInput	ENDP
 ;---------------------------
 ;This PROC draws the screens of the two players given the parameters in data segment
 ;@param     none
@@ -1830,10 +1915,16 @@ PrintChar		ENDP
 ;				BL(color) DH (Y)  DL(X)
 ;@return		none
 PrintMessage	PROC 	NEAR
+
+				PUSHA
+
 				MOV AH, 13H ; WRITE THE STRING
 				MOV AL, 01H; ATTRIBUTE IN BL, MOVE CURSOR TO THAT POSITION
 				XOR BH,BH ; VIDEO PAGE = 0
 				INT 10H
+
+				POPA
+
 				RET
 PrintMessage	ENDP		
 ;---------------------------
@@ -2015,13 +2106,14 @@ DrawLogoMenu 	PROC	NEAR
 			MOV BL, 15 ;WHITE
 			CALL PrintMessage	
 			
-			mov ah, 13h
+
 			mov cx, UnderlineStringShortLength
 			mov dh, 22
 			mov dl, 0
 			lea bp, UnderlineStringShort
-			mov bx, 07h
-			int 10h
+			mov bl, 7
+
+			CALL PrintMessage
  
 			CMP ConnectionCreatedFlag, 1	;check if a connection has been made before
 			JZ ListeningEnded
@@ -3774,4 +3866,16 @@ ClearFrame2:
 		RET
 ClearFrameData	ENDP
 ;-------------------------
+ClearGameNotificationBar PROC NEAR
+		PUSHA
+		LEA BP, ClearRowString
+		mov cx, ClearRowStringLength
+		mov BL, 7
+		mov dh, 47
+		mov dl, 0
+
+		CALL PrintMessage
+		POPA
+		RET
+ClearGameNotificationBar ENDP
 END     MAIN
