@@ -507,12 +507,21 @@ StGame:
 			JMP KeepReceivingForStart
 
 ChooseLevel:
-			mov ah, 0
+			mov ah, 0 ;Wait 4 key
 			int 16h
+			
+			cmp al,'1'
+			JE  Key1PressedM
+			
+			cmp al,'2'
+			JNE ChooseLevel
+			CALL LevelUp
 
-			MOV AH, 5	;FLAG TO START GAME
+Key1PressedM:						
+			
+			;CALL SendValueThroughSerial
+			MOV AH, AL
 			CALL SendValueThroughSerial
-
 			JMP GAMELP
 
 KeepReceivingForStart:
@@ -520,7 +529,11 @@ KeepReceivingForStart:
 			CALL ReceiveValueFromSerial
 			CMP AL, 1
 			JZ 	KeepReceivingForStart
-
+			CMP AH,'1'
+			JE GAMELP
+			CMP AH,'2'
+			JNE KeepReceivingForStart
+			CALL LevelUP		
 			JMP GAMELP
 
 GAMELP:	
@@ -881,6 +894,16 @@ ISBLACK:
 		POPA
 		RET
 DeletePiece		ENDP
+;---------------------------
+;This Procedure is for level 2
+;@param			none
+;@return 		none
+LevelUp			PROC		NEAR
+				INC Level
+				INC leftPieceSpeed
+				INC rightPieceSpeed
+				RET
+LevelUp			ENDP
 ;---------------------------
 ;This procedure draws the piece stored in temp piece
 ;in it's corresponding Data,(X,Y)
@@ -1726,7 +1749,6 @@ CHECKLINESKIPINC:
 				JNZ CHECKLINESIIS0			;if SI is 4, make it 0, if it's 0, make it 4
 				ADD Player1Score, DeltaScore		;increase score
 				CALL AddPowerupCheck
-				CALL LevelUpCheck
 				CALL UpdatePlayersScore
 
 				MOV SI, 4D
@@ -1734,7 +1756,6 @@ CHECKLINESKIPINC:
 CHECKLINESIIS0:
 				ADD Player2Score, DeltaScore		;increase score
 				CALL AddPowerupCheck
-				CALL LevelUpCheck
 				CALL UpdatePlayersScore
 				MOV SI, 0D
 CHECKLINESIIS4:
@@ -2913,26 +2934,6 @@ NoPowerUp:
 					RET
 AddPowerupCheck		ENDP
 ;---------------------------
-;This procedure checks if scores enable players to head to level 2
-;@param				none
-;@return			none
-LevelUpCheck	PROC 	NEAR
-				PUSHA
-				MOV CL, Level 
-				CMP CL, 2
-				JZ  NoLevelUp
-				MOV AL,Player1Score
-				ADD AL,Player2Score
-				CMP AL,LevelUpAccScore
-				JZ 	NoLevelUp
-				INC rightPieceSpeed
-				INC leftPieceSpeed
-				INC Level
-NoLevelUp:				
-				POPA
-				RET
-LevelUpCheck	ENDP
-;---------------------------
 ;This procedure removes four lines from a given screen
 ;@param			SI: screenId: 0 for left, 4 for right
 ;@return		none
@@ -2963,17 +2964,21 @@ RemoveFourLines		ENDP
 ;@return		none
 SpeedUpOpponentPiece		PROC	NEAR
 		PUSHA
-		
+		MOV CL, 2 				;Speed on level 1
+		CMP Level,2
+		JNE CheckonPlayer
+		INC CL					;Speed on level 2
+CheckPlayer:		
 		CMP SI, 4							;if it is called by the right player
 		JZ SpeedUpLeftPlayer	;increase left player piece speed
 
 	SpeedUpRightPlayer:
-		MOV rightPieceSpeed, 2
+		MOV rightPieceSpeed, CL
 		POPA
 		RET	
 
 	SpeedUpLeftPlayer:
-		MOV leftPieceSpeed, 2
+		MOV leftPieceSpeed, CL
 		POPA
 		RET
 
