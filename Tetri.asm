@@ -464,6 +464,7 @@ GameFlag					DB 1			;Status of the game
 GRAYBLOCKCLR				EQU	 8		;color of gray solid blocks
 EscPressed					DB 0
 Level						DB 1
+SeedNumber					DB 1		;Seed to get id
 ;---------------------------
 .CODE         
 MAIN    PROC    FAR
@@ -536,7 +537,8 @@ KeepReceivingForStart:
 			CALL LevelUP		
 			JMP GAMELP
 
-GAMELP:	
+GAMELP:		
+			INC SeedNumber
 			CALL ParseInput
 			CMP EscPressed, 1
 			JNZ	NoEsc
@@ -546,6 +548,10 @@ NoEsc:
 			MOV AL,GameFlag
 			CMP AL,1
 			JNZ Finished
+			MOV     CX, 0H
+			MOV     DX, 0C350H
+			MOV     AH, 86H
+			INT     15H
 			JMP GAMELP
 
 Finished:
@@ -1315,10 +1321,16 @@ ParseLocalInput	ENDP
 ;@return		none
 PieceGravity	PROC	NEAR
 				PUSHA
-				mov  AH, 2CH
-				INT  21H 			;RETURN SECONDS IN DH.
-				CMP DH,seconds		;Check if one second has passed
-				JE NO_CHANGE
+				; mov  AH, 2CH
+				; INT  21H 			;RETURN SECONDS IN DH.
+				MOV AX,0
+				MOV AL,SeedNumber
+				MOV CX,10
+				DIV CL
+				MOV BX,0
+				MOV BL,AH
+				CMP BL,0		;Check if one second has passed
+				JNE NO_CHANGE
 				MOV seconds,DH		;moves current second to the seconds variable
 				MOV BX,0			;Parameter to move piece in particular direction
 				MOV SI,0
@@ -1520,10 +1532,12 @@ CheckCollision	ENDP
 ;@return 	GameFlag Var = Screen that lost
 GenerateRandomPiece		PROC 	NEAR
 						PUSHA
-						MOV AH,2CH
-						INT 21H		;Returns seconds in DH
+						; MOV AH,2CH
+						; INT 21H		;Returns seconds in DH
+						; MOV AX,0
+						; MOV AL,DH	;AL=Seconds
 						MOV AX,0
-						MOV AL,DH	;AL=Seconds
+						MOV AL,SeedNumber
 						MOV CX,7
 						DIV CL
 						MOV BX,0
@@ -2968,7 +2982,7 @@ SpeedUpOpponentPiece		PROC	NEAR
 		CMP Level,2
 		JNE CheckonPlayer
 		INC CL					;Speed on level 2
-CheckPlayer:		
+CheckonPlayer:		
 		CMP SI, 4							;if it is called by the right player
 		JZ SpeedUpLeftPlayer	;increase left player piece speed
 
