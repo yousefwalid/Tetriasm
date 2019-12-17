@@ -128,7 +128,7 @@ GAMERIGHTSCRY       DW  54      ;top left corner Y of right screen
 FRAMETEXTOFFSET		EQU 50
 
 DeltaScore			EQU 1		;amount of score a player gains by clearing a line
-
+LevelUpAccScore		EQU 10
 ;; Position of player names 
 
 RightPlyLocX		EQU RightScoreLocX-10
@@ -463,6 +463,7 @@ Seconds						DB 99			;Contains the previous second value
 GameFlag					DB 1			;Status of the game
 GRAYBLOCKCLR				EQU	 8		;color of gray solid blocks
 EscPressed					DB 0
+Level						DB 1
 ;---------------------------
 .CODE         
 MAIN    PROC    FAR
@@ -570,7 +571,8 @@ InitializeNewGame 	PROC	NEAR
 					MOV Seconds,99		
 					MOV GameFlag, 1
 					MOV IngameFlag, 1
-
+					MOV Level, 1
+					
 					RET
 InitializeNewGame 	ENDP
 ;---------------------------
@@ -1724,6 +1726,7 @@ CHECKLINESKIPINC:
 				JNZ CHECKLINESIIS0			;if SI is 4, make it 0, if it's 0, make it 4
 				ADD Player1Score, DeltaScore		;increase score
 				CALL AddPowerupCheck
+				CALL LevelUpCheck
 				CALL UpdatePlayersScore
 
 				MOV SI, 4D
@@ -1731,6 +1734,7 @@ CHECKLINESKIPINC:
 CHECKLINESIIS0:
 				ADD Player2Score, DeltaScore		;increase score
 				CALL AddPowerupCheck
+				CALL LevelUpCheck
 				CALL UpdatePlayersScore
 				MOV SI, 0D
 CHECKLINESIIS4:
@@ -2909,6 +2913,26 @@ NoPowerUp:
 					RET
 AddPowerupCheck		ENDP
 ;---------------------------
+;This procedure checks if scores enable players to head to level 2
+;@param				none
+;@return			none
+LevelUpCheck	PROC 	NEAR
+				PUSHA
+				MOV CL, Level 
+				CMP CL, 2
+				JZ  NoLevelUp
+				MOV AL,Player1Score
+				ADD AL,Player2Score
+				CMP AL,LevelUpAccScore
+				JZ 	NoLevelUp
+				INC rightPieceSpeed
+				INC leftPieceSpeed
+				INC Level
+NoLevelUp:				
+				POPA
+				RET
+LevelUpCheck	ENDP
+;---------------------------
 ;This procedure removes four lines from a given screen
 ;@param			SI: screenId: 0 for left, 4 for right
 ;@return		none
@@ -2966,16 +2990,18 @@ ResetPieceSpeed		PROC	NEAR
 
 	ResetLeftSpeed:
 		MOV CL, leftPieceSpeed
-		CMP CL,1
+		CMP CL,Level 
 		JZ BreakResetPieceSpeed
-		MOV leftPieceSpeed, 1	;set the piece speed to  1
+		MOV CL, Level
+		MOV leftPieceSpeed, CL	;set the piece speed to  1 or 2
 		JMP BreakResetPieceSpeed
 
 	ResetRightSpeed:
 		MOV CL, rightPieceSpeed
-		CMP CL,1
+		CMP CL,Level
 		JZ BreakResetPieceSpeed
-		MOV rightPieceSpeed, 1	;set the piece speed to  1
+		MOV CL, Level 
+		MOV rightPieceSpeed, CL	;set the piece speed to  1 or 2
 
 	BreakResetPieceSpeed:
 		POPA
