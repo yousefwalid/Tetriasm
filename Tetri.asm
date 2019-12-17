@@ -529,7 +529,7 @@ NoEsc:
 			CMP AL,1
 			JNZ Finished
 			MOV     CX, 0H
-			MOV     DX, 0C350H
+			MOV     DX, 61A8H
 			MOV     AH, 86H
 			INT     15H
 			JMP GAMELP
@@ -572,6 +572,8 @@ InitializeNewGame 	PROC	NEAR
 					MOV IngameFlag, 1
 					MOV Level, 1
 					
+					MOV SeedNumber, 0
+
 					RET
 InitializeNewGame 	ENDP
 ;---------------------------
@@ -1410,7 +1412,7 @@ PieceGravity	PROC	NEAR
 				; INT  21H 			;RETURN SECONDS IN DH.
 				MOV AX,0
 				MOV AL,SeedNumber
-				MOV CX,10
+				MOV CX,25
 				DIV CL
 				MOV BX,0
 				MOV BL,AH
