@@ -2968,7 +2968,7 @@ SpeedUpOpponentPiece		PROC	NEAR
 		CMP Level,2
 		JNE CheckonPlayer
 		INC CL					;Speed on level 2
-CheckPlayer:		
+CheckonPlayer:		
 		CMP SI, 4							;if it is called by the right player
 		JZ SpeedUpLeftPlayer	;increase left player piece speed
 
