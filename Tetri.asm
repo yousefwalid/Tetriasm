@@ -221,15 +221,37 @@ tempNextPieceOffset				DW	?			;contains the address of the next piece
 ;--------Controls-------
 
 ;Controls for left screen
-leftDownCode			DB	1Fh		;S key
-leftLeftCode			DB	1Eh		;A key
-leftRightCode			DB	20h		;D key
-leftRotCode				DB	11h		;W key
-leftPower1				DB  02h		;1 key
-leftPower2				DB  03h		;2 key
-leftPower3				DB  04h		;3 key
-leftPower4				DB  05h		;4 key
-leftPower5				DB  06h		;5 key
+
+leftDownCode			DB	50h		;down arrow key
+leftLeftCode			DB	4Bh		;left arrow key
+leftRightCode			DB	4Dh		;right arrow key
+leftRotCode				DB	48h		;up arrow key
+leftPower1				DB  3Bh		;F1 key
+leftPower2				DB  3Ch		;F2 key
+leftPower3				DB  3Dh		;F3 key
+leftPower4				DB  3Eh		;F4 key
+leftPower5				DB  3Fh		;F5 key
+
+;ascii codes for arrows so i can use them
+DownArrowASCII			EQU 240
+LeftArrowASCII			EQU 241
+RightArrowASCII			EQU 242
+UpArrowASCII			EQU 243
+F1ASCII					EQU 244
+F2ASCII					EQU 245
+F3ASCII					EQU 246
+F4ASCII					EQU 247
+F5ASCII					EQU 248
+
+; leftDownCode			DB	1Fh		;S key
+; leftLeftCode			DB	1Eh		;A key
+; leftRightCode			DB	20h		;D key
+; leftRotCode				DB	11h		;W key
+; leftPower1				DB  02h		;1 key
+; leftPower2				DB  03h		;2 key
+; leftPower3				DB  04h		;3 key
+; leftPower4				DB  05h		;4 key
+; leftPower5				DB  06h		;5 key
 
 ;Controls for right screen
 ; rightDownCode			DB	50h		;downArrow key
@@ -268,9 +290,9 @@ RIGHTNEXTPIECELOCY	EQU 4
 SCORETEXTLENGTH		EQU 6
 SCORETEXT			DB	"Score:"
 LeftScoreLocX		EQU 23
-LeftScoreLocY		EQU 33
+LeftScoreLocY		EQU 39
 RightScoreLocX		EQU 87
-RightScoreLocY		EQU 33
+RightScoreLocY		EQU 39
 
 LeftScoreTextLength EQU 2
 LeftScoreText		DB "00"
@@ -402,9 +424,13 @@ WaitForLevel1String			DB "Waiting for "
 WaitForLevel2StringLength	EQU 16
 WaitForLevel2String			DB " to choose level"
 
+gameScreenWidth				EQU 128
 
 ClearRowStringLength			EQU	80				
-ClearRowString					DB "                                                                               "
+ClearRowString					DB "                                                                                "
+
+ClearRowLargeLength				EQU 128
+ClearRowLargeString				DB "                                                                                                                                "
 
 ;; Main screen strings
 
@@ -470,6 +496,18 @@ ChatInvitationFlag	DB	0
 GameInvitationFlag	DB 	0
 IngameFlag			DB 	0
 ConnectionCreatedFlag	DB	0
+;-------Inline chat--------
+Player1ChatNameX	EQU 0
+Player1ChatNameY	EQU 41
+Player2ChatNameX	EQU 0
+Player2ChatNameY	EQU 44
+
+Player1ChatCursorX	DB 0
+Player1ChatCursorY	DB Player1ChatNameY+1
+Player2ChatCursorX	DB 0
+Player2ChatCursorY	DB Player2ChatNameY+1
+
+currentPlayerCursorPtr	DW ?
 ;-------General vars-------
 Seconds						DB 99			;Contains the previous second value
 GameFlag					DB 1			;Status of the game
@@ -573,6 +611,11 @@ InitializeNewGame 	PROC	NEAR
 					MOV Level, 1
 					
 					MOV SeedNumber, 0
+
+					MOV Player1ChatCursorX,0
+					MOV Player1ChatCursorY,Player1ChatNameY+1
+					MOV Player2ChatCursorX,0
+					MOV Player2ChatCursorY,Player2ChatNameY+1
 
 					RET
 InitializeNewGame 	ENDP
@@ -1246,7 +1289,12 @@ ParseInput	PROC	NEAR
 YesInput:
 			MOV AH, 0
 			INT 16H
-			CALL SendValueThroughSerial
+			;send ascii code instead (ie: swap al with ah)
+			CALL ChangeCodeToASCII
+			;AH has scan codes, AL has ascii codes
+			XCHG AH, AL
+			;AH NOW HAS ASCII CODE, AL HAS SCAN CODES
+			CALL SendValueThroughSerial ;send ascii code through serial
 			MOV SI, Player1Id
 			MOV PlayerId, SI
 			CALL ParseLocalInput
@@ -1266,7 +1314,7 @@ ParseInput	ENDP
 ;@return		none
 ParseLocalInput	PROC	NEAR
 ExitGame:
-		CMP AH, ESCCode
+		CMP AH, ESCASCII
 		JNZ LeftRotKey
 
 		;------ this should be changed to return to menu instead
@@ -1275,7 +1323,7 @@ ExitGame:
 		RET
 		JMP BreakParseInput
 LeftRotKey:
-		CMP AH, leftRotCode
+		CMP AH, UpArrowASCII
 		JNZ LeftLeftKey
 
 		CMP leftPieceRotationLock,1 ;check if the rotation is locked
@@ -1289,7 +1337,7 @@ LeftRotKey:
 LeftRotKeyParsed:
 		JMP BreakParseInput
 LeftLeftKey:
-		CMP AH, leftLeftCode
+		CMP AH, leftArrowASCII
 		JNZ LeftDownKey
 		MOV SI, PlayerId
 		CALL GetTempPiece
@@ -1300,7 +1348,7 @@ LeftLeftKey:
 
 		JMP BreakParseInput
 LeftDownKey:
-		CMP AH, leftDownCode
+		CMP AH, DownArrowASCII
 		JNZ LeftRightKey
 		MOV SI, PlayerId
 		CALL GetTempPiece
@@ -1312,7 +1360,7 @@ LeftDownKey:
 
 		JMP BreakParseInput
 LeftRightKey:
-		CMP AH, leftRightCode
+		CMP AH, RightArrowASCII
 		JNZ LeftPowerup1
 		MOV SI, PlayerId
 		CALL GetTempPiece
@@ -1323,7 +1371,7 @@ LeftRightKey:
 
 		JMP BreakParseInput
 LeftPowerup1:
-		CMP AH, leftPower1
+		CMP AH, F1ASCII
 		JNZ LeftPowerup2
 
 		MOV AH, leftPowerupFreezeCount
@@ -1339,7 +1387,7 @@ BreakPowerup1:
 		JMP BreakParseInput
 
 LeftPowerup2:
-		CMP AH, leftPower2
+		CMP AH, F2ASCII
 		JNZ LeftPowerup3
 
 		MOV AH, leftPowerupSpeedUpCount
@@ -1354,7 +1402,7 @@ LeftPowerup2:
 BreakPowerup2:
 		JMP BreakParseInput
 LeftPowerup3:
-		CMP AH, leftPower3
+		CMP AH, F3ASCII
 		JNZ LeftPowerup4
 		
 		MOV AH, leftPowerupRemoveLinesCount
@@ -1368,7 +1416,7 @@ LeftPowerup3:
 BreakPowerup3:
 		JMP BreakParseInput
 LeftPowerup4:
-		CMP AH, LeftPower4
+		CMP AH, F4ASCII
 		JNZ LeftPowerup5
 
 		MOV AH, leftPowerupChangePieceCount
@@ -1383,8 +1431,8 @@ BreakPowerup4:
 		JMP BreakParseInput
 
 LeftPowerup5:
-		CMP AH, LeftPower5
-		JNZ BreakPowerup5
+		CMP AH, F5ASCII
+		JNZ WriteCharToChat
 
 		MOV AH, leftPowerupInsertTwoLinesCount
 		CMP AH, 0
@@ -1397,6 +1445,12 @@ LeftPowerup5:
 		CALL UpdatePowerupsScore
 
 BreakPowerup5:
+		JMP BreakParseInput
+
+WriteCharToChat:
+		MOV SI, PlayerId
+		CALL WriteInlineChatChar
+
 		JMP BreakParseInput
 
 BreakParseInput:
@@ -2705,7 +2759,28 @@ DrawGUIText		PROC	NEAR
 				mov bx, 60d
 				int 10h
 
-				CALL UpdatePowerupsScore		;draw the powerups text
+				CALL UpdatePowerupsScore ;draw the powerups text
+
+				LEA BP, Player1
+				MOV CX, NameSz
+				MOV BL, 3
+				MOV DH, Player1ChatNameY
+				MOV DL, Player1ChatNameX
+				CALL PrintMessage
+
+				LEA BP, Player2
+				MOV CX, NameSz
+				MOV BL, 3
+				MOV DH, Player2ChatNameY
+				MOV DL, Player2ChatNameX
+				CALL PrintMessage
+
+				LEA BP, UnderlineString
+				MOV CX, UnderlineStringLength
+				MOV BL, 7
+				MOV DH, Player1ChatNameY+2
+				MOV DL, 0
+				CALL PrintMessage
 
 				POPA
 				RET
@@ -3023,9 +3098,16 @@ PowerupBreak:
 					JNZ NoPowerUp
 					CMP AL, 0
 					JZ  NoPowerUp
-					MOV BX, 5				;number of powerups
-					CALL GenerateRandomNumber
-					;bl now has a random number from 0 to 4 inclusive
+
+					MOV ax, 0
+					mov al, SeedNumber
+					mov bl, 5
+
+					div bl
+					mov bx, 0
+					mov bl, ah
+
+					;bl now has a random number from 0 to 5 inclusive
 					;MOV leftPowerupFreezeCount, BL
 					ADD DI, BX
 					INC DI					;moves DI to rand_number+1
@@ -3894,4 +3976,180 @@ ClearGameNotificationBar PROC NEAR
 		POPA
 		RET
 ClearGameNotificationBar ENDP
+;--------------------------
+;This procedure writes a character in the inline chat box
+;@param		SI: 0 for Player1, 4 for player2
+;			AH (ascii code of character)
+;@return	none
+WriteInlineChatChar	PROC NEAR
+		PUSHA
+		CMP SI, 4
+		JNZ	InlineChatPlayer1
+		LEA DI, Player2ChatCursorX
+		JMP ContinueInlineChat
+InlineChatPlayer1:
+		LEA DI, Player1ChatCursorX
+ContinueInlineChat:
+
+		MOV DH, [DI]+1
+		MOV DL, [DI]
+		CALL MoveCursor
+
+CheckBackspace:
+		CMP AH, BackspaceASCII
+		JNZ	CheckEnter
+
+		MOV BL, 0
+		CMP [DI], BL
+		JZ ExitInlineChatFunction
+
+		MOV BL, 1
+		SUB [DI], BL
+
+		MOV DH, [DI]+1
+		MOV DL, [DI]
+		CALL MoveCursor
+
+		MOV AL, 32
+		MOV BL, 0d
+		CALL PrintChar
+
+		JMP ExitInlineChatFunction
+CheckEnter:
+		CMP AH, EnterASCII
+		JNZ CheckNormalChar
+
+		MOV BL, 0
+		MOV [DI], BL
+
+		MOV DH, [DI]+1
+		MOV DL, [DI]
+		CALL MoveCursor
+
+
+		LEA BP, ClearRowLargeString
+		MOV CX, ClearRowLargeLength
+		MOV BL, 0
+		MOV DH, [DI]+1
+		MOV DL, [DI]
+
+		CALL PrintMessage
+
+		MOV BL, 0
+		MOV [DI], BL
+
+		JMP ExitInlineChatFunction
+
+CheckNormalChar:
+
+		MOV AL, AH
+		MOV BL, 7
+		CALL PrintChar
+
+		MOV BL, 1
+		ADD [DI], BL
+
+CheckNewLine:
+		MOV BL, 128D
+		CMP [DI], BL
+		JNZ ExitInlineChatFunction
+		
+		MOV BL, 0
+		MOV [DI], BL
+
+		MOV DH, [DI]+1
+		MOV DL, [DI]
+		CALL MoveCursor
+
+
+		LEA BP, ClearRowLargeString
+		MOV CX, ClearRowLargeLength
+		MOV BL, 0
+		MOV DH, [DI]+1
+		MOV DL, [DI]
+
+		CALL PrintMessage
+
+		MOV BL, 0
+		MOV [DI], BL
+
+		
+
+ExitInlineChatFunction:
+		POPA
+		RET
+WriteInlineChatChar	ENDP
+;--------------------------
+;This procedure changes scancodes of controls to their ascii
+;@param		AH, scancode
+;@return	AL, ascii
+ChangeCodeToASCII	PROC	NEAR
+		CMP AH, leftDownCode
+		JZ	DownArr
+		CMP AH, leftLeftCode
+		JZ	leftArr
+		CMP AH, leftRightCode
+		JZ	rightArr
+		CMP AH, leftRotCode
+		JZ	upArr
+		CMP AH, leftPower1
+		JZ	f1Key
+		CMP AH, leftPower2
+		JZ	f2Key
+		CMP AH, leftPower3
+		JZ	f3Key
+		CMP AH, leftPower4
+		JZ	f4Key
+		CMP AH, leftPower5
+		JZ	f5Key
+		JMP ExitChangeCodeToASCII
+DownArr:
+		CMP AH, leftDownCode
+		JNZ ExitChangeCodeToASCII
+		MOV AL, DownArrowASCII
+		JMP ExitChangeCodeToASCII
+leftArr:
+		CMP AH, leftLeftCode
+		JNZ ExitChangeCodeToASCII
+		MOV AL, LeftArrowASCII
+		JMP ExitChangeCodeToASCII
+rightArr:
+		CMP AH, leftRightCode
+		JNZ ExitChangeCodeToASCII
+		MOV AL, RightArrowASCII
+		JMP ExitChangeCodeToASCII
+upArr:
+		CMP AH, leftRotCode
+		JNZ ExitChangeCodeToASCII
+		MOV AL, UpArrowASCII
+		JMP ExitChangeCodeToASCII
+f1Key:
+		CMP AH, leftPower1
+		JNZ ExitChangeCodeToASCII
+		MOV AL, F1ASCII
+		JMP ExitChangeCodeToASCII
+f2Key:
+		CMP AH, leftPower2
+		JNZ ExitChangeCodeToASCII
+		MOV AL, F2ASCII
+		JMP ExitChangeCodeToASCII
+f3Key:
+		CMP AH, leftPower3
+		JNZ ExitChangeCodeToASCII
+		MOV AL, F3ASCII
+		JMP ExitChangeCodeToASCII
+f4Key:
+		CMP AH, leftPower4
+		JNZ ExitChangeCodeToASCII
+		MOV AL, F4ASCII
+		JMP ExitChangeCodeToASCII
+f5Key:
+		CMP AH, leftPower5
+		JNZ ExitChangeCodeToASCII
+		MOV AL, F5ASCII
+		JMP ExitChangeCodeToASCII
+ExitChangeCodeToASCII:
+		RET
+ChangeCodeToASCII	ENDP
+;--------------------------
 END     MAIN
