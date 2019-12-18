@@ -515,6 +515,7 @@ GRAYBLOCKCLR				EQU	 8		;color of gray solid blocks
 EscPressed					DB 0
 Level						DB 1
 SeedNumber					DB 1		;Seed to get id
+SyncCode					EQU 254
 ;---------------------------
 .CODE         
 MAIN    PROC    FAR
@@ -558,6 +559,9 @@ StGame:
 
 GAMELP:		
 			INC SeedNumber
+
+			;CALL WaitForSyncLoop
+			;CALL clearkeyboardbuffer
 			CALL ParseInput
 			CMP EscPressed, 1
 			JNZ	NoEsc
@@ -571,6 +575,12 @@ NoEsc:
 			MOV     DX, 61A8H
 			MOV     AH, 86H
 			INT     15H
+
+			; MOV     CX, 0H
+			; MOV     DX, 64H
+			; MOV     AH, 86H
+			; INT     15H
+
 			JMP GAMELP
 
 Finished:
@@ -783,8 +793,6 @@ DRAWVER:
 	CALL DrawRightBorder
 	RET
 DrawGameScr ENDP
-;---------------------------
-
 ;---------------------------
 ;This PROC draws the pixels surrounding the frame of the two players given the parameters in data segment
 ;@param     none
@@ -1316,6 +1324,10 @@ ParseInput	ENDP
 ;@param			AH: key to parse, SI: playerID
 ;@return		none
 ParseLocalInput	PROC	NEAR
+SyncKey:
+		CMP AH, SyncCode
+		JNZ ExitGame
+		JMP BreakParseInput
 ExitGame:
 		CMP AH, ESCASCII
 		JNZ LeftRotKey
@@ -2379,11 +2391,6 @@ GameInvitationAccepted:
 			MOV CL, Ply2Sz			;TAKE NAME
 			LEA DI, Player2
 
-	ReceiveName2Game2:
-			CALL ReceiveValueFromSerial
-			MOV [DI], AH
-			LOOP ReceiveName2Game2
-
 			MOV Player1Id, 0
 			MOV Player2Id, 4
 
@@ -2392,12 +2399,8 @@ GameInvitationAccepted:
 
 			JMP NoInvitation
 
-
 NoInvitation:
 			JMP ListeningEnded
-
-
-			;CALL DisplayMenu
 			
 			RET
 DrawLogoMenu 	ENDP
@@ -4215,5 +4218,39 @@ f5Key:
 ExitChangeCodeToASCII:
 		RET
 ChangeCodeToASCII	ENDP
+;--------------------------
+WaitForSyncLoop	PROC	NEAR
+
+		MOV AH, SyncCode					;signal for wakeup
+		CALL SendValueThroughSerial
+
+WaitForSignalLoop:
+		CALL ReceiveValueFromSerial
+		CMP AL, 1
+		JZ	WaitForSignalLoop
+
+		CMP AH, SyncCode
+		JZ EXITFN
+		JMP WaitForSignalLoop
+EXITFN:
+
+		MOV AH, SyncCode
+		CALL SendValueThroughSerial
+
+		RET
+
+WaitForSyncLoop	ENDP
+;--------------------------
+clearkeyboardbuffer		proc	near
+	push		ax
+	push		es
+	mov		ax, 0000h
+	mov		es, ax
+	mov		es:[041ah], 041eh
+	mov		es:[041ch], 041eh				; Clears keyboard buffer
+	pop		es
+	pop		ax
+	ret
+clearkeyboardbuffer		endp
 ;--------------------------
 END     MAIN
