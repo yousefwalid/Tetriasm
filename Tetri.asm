@@ -287,11 +287,11 @@ LEFTNEXTPIECELOCY	EQU 4
 RIGHTNEXTPIECELOCX	EQU 108
 RIGHTNEXTPIECELOCY	EQU 4
 
-SCORETEXTLENGTH		EQU 6
-SCORETEXT			DB	"Score:"
-LeftScoreLocX		EQU 23
+SCORETEXTLENGTH		EQU 7
+SCORETEXT			DB	" Score:"
+LeftScoreLocX		EQU 25
 LeftScoreLocY		EQU 39
-RightScoreLocX		EQU 87
+RightScoreLocX		EQU 89
 RightScoreLocY		EQU 39
 
 LeftScoreTextLength EQU 2
@@ -467,12 +467,12 @@ RPly1  DB  0
 RPly2  DB  0
 
 SPACE 		DB ' '
-NAME1		DB 15
+NAME1		DB 20
 Ply1Sz		DB ?
-Player1		DB 15 DUP(' ')
-NAME2 		DB 15
+Player1		DB 20 DUP(" ")
+NAME2 		DB 20
 Ply2Sz		DB ?
-Player2		DB 15 DUP(' ')
+Player2		DB 20 DUP(" ")
 NameSz		EQU 6
 
 ;-------Chat Screen--------
@@ -523,6 +523,7 @@ MAIN    PROC    FAR
 		MOV ES, AX
 		CALL InitializeSerialPort
 		CALL GetName
+		
 NewGame:						
 		CALL DrawLogoMenu
 		JMP NewGame
@@ -673,7 +674,8 @@ KeepReceivingForStart2:
 			CALL PrintMessage
 
 			LEA BP, Player2
-			mov cx, NameSz
+			mov cx, 0
+			mov cl, Ply2Sz
 			mov BL, 7
 			mov dh, 47
 			mov dl, WaitForLevel1StringLength
@@ -684,7 +686,8 @@ KeepReceivingForStart2:
 			mov cx, WaitForLevel2StringLength
 			mov BL, 7
 			mov dh, 47
-			mov dl, WaitForLevel1StringLength+NameSz
+			mov dl, WaitForLevel1StringLength
+			add dl, ply2sz
 
 			CALL PrintMessage
 
@@ -1989,8 +1992,8 @@ PrintMessage	PROC 	NEAR
 				PUSHA
 
 				MOV AH, 13H ; WRITE THE STRING
-				MOV AL, 01H; ATTRIBUTE IN BL, MOVE CURSOR TO THAT POSITION
-				XOR BH,BH ; VIDEO PAGE = 0
+				MOV AL, 00H; ATTRIBUTE IN BL, MOVE CURSOR TO THAT POSITION
+				mov bh, 0
 				INT 10H
 
 				POPA
@@ -2154,7 +2157,8 @@ DrawLogoMenu 	PROC	NEAR
 			MOV     BX, 0100H
 			INT     10H
 			CALL DrawLogo
-			
+
+
 			MOV BP, OFFSET Logo1 ; ES: BP POINTS TO THE TEXT
 			MOV CX, L1sz
 			MOV DH, 16;ROW TO PLACE STRING
@@ -2184,6 +2188,7 @@ DrawLogoMenu 	PROC	NEAR
 			mov bl, 7
 
 			CALL PrintMessage
+			
  
 			CMP ConnectionCreatedFlag, 1	;check if a connection has been made before
 			JZ ListeningEnded
@@ -2216,6 +2221,13 @@ NoInvitationFlag:
 			MOV AH, 1						;send invitation indication
 			CALL SendValueThroughSerial
 
+			LEA BP, ClearRowString
+			MOV CX, ClearRowStringLength
+			MOV BL, 15
+			MOV DH, 23
+			MOV DL, 0
+			CALL PrintMessage
+
 			LEA BP, ChatSentString
 			MOV CX, ChatSentStringLength
 			MOV BL, 15
@@ -2224,7 +2236,8 @@ NoInvitationFlag:
 			CALL PrintMessage
 
 			LEA BP, Player2
-			MOV CX, NameSz
+			mov cx, 0
+			MOV Cl, Ply2Sz
 			MOV BL, 15
 			MOV DH, 23
 			MOV DL, ChatSentStringLength
@@ -2248,17 +2261,25 @@ NoGameInvitationFlag:
 			MOV AH, 2						;send invitation indication
 			CALL SendValueThroughSerial
 
+			LEA BP, ClearRowString
+			MOV CX, ClearRowStringLength
+			MOV BL, 15
+			MOV DH, 24
+			MOV DL, 0
+			CALL PrintMessage
+
 			LEA BP, GameSentString
 			MOV CX, GameSentStringLength
 			MOV BL, 15
-			MOV DH, 23
+			MOV DH, 24
 			MOV DL, 0
 			CALL PrintMessage
 
 			LEA BP, Player2
-			MOV CX, NameSz
+			mov cx, 0
+			MOV CL, Ply2Sz
 			MOV BL, 15
-			MOV DH, 23
+			MOV DH, 24
 			MOV DL, GameSentStringLength
 			CALL PrintMessage
 
@@ -2284,14 +2305,23 @@ NoKey:
 			JZ ChatInvitationAccepted
 			CMP AH, 2
 			JZ GameInvitationSent
-			CMP AH, 22
-			JZ GameInvitationAccepted
+			; CMP AH, 22
+			; JZ GameInvitationAccepted
+			JMP GameInvitationAccepted
 
 ChatInvitationSent:
 			MOV ChatInvitationFlag, BYTE PTR 1D
 
+			LEA BP, ClearRowString
+			MOV CX, ClearRowStringLength
+			MOV BL, 15
+			MOV DH, 23
+			MOV DL, 0
+			CALL PrintMessage
+
 			LEA BP, Player2
-			MOV CX, NameSz
+			mov cx, 0
+			MOV CL, Ply2Sz
 			MOV BL, 15
 			MOV DH, 23
 			MOV DL, 0
@@ -2301,7 +2331,7 @@ ChatInvitationSent:
 			MOV CX, ChatRequestStringLength
 			MOV BL, 15
 			MOV DH, 23
-			MOV DL, 6
+			MOV DL, Ply2Sz
 			CALL PrintMessage
 
 			JMP NoInvitation
@@ -2313,29 +2343,40 @@ ChatInvitationAccepted:
 
 			JMP NoInvitation
 
+
+NoInvitation1:
+			JMP NoInvitation
+
 GameInvitationSent:
 			MOV GameInvitationFlag, BYTE PTR 1D
 
-			LEA BP, Player2
-			MOV CX, NameSz
+			LEA BP, ClearRowString
+			MOV CX, ClearRowStringLength
 			MOV BL, 15
-			MOV DH, 23
+			MOV DH, 24
+			MOV DL, 0
+			CALL PrintMessage
+
+			LEA BP, Player2
+			mov cx, 0
+			MOV CL, Ply2Sz
+			MOV BL, 15
+			MOV DH, 24
 			MOV DL, 0
 			CALL PrintMessage
 
 			LEA BP, GameRequestString
 			MOV CX, GameRequestStringLength
 			MOV BL, 15
-			MOV DH, 23
-			MOV DL, 6
+			MOV DH, 24
+			MOV DL, Ply2Sz
 			CALL PrintMessage
 
-NoInvitation1:
 			JMP NoInvitation
 
 GameInvitationAccepted:
-			
-			MOV CX, NameSz			;TAKE NAME
+			Mov cx, 0
+			MOV CL, Ply2Sz			;TAKE NAME
 			LEA DI, Player2
 
 	ReceiveName2Game2:
@@ -2356,7 +2397,7 @@ NoInvitation:
 			JMP ListeningEnded
 
 
-			CALL DisplayMenu
+			;CALL DisplayMenu
 			
 			RET
 DrawLogoMenu 	ENDP
@@ -2365,6 +2406,7 @@ DrawLogoMenu 	ENDP
 ;@param		none (proper GFX mode)
 ;@			none
 GetName		PROC 	NEAR
+				
 				;call videomode13h
 				MOV AH, 00H ; Set video mode
 				MOV AL, 13H ; Mode 13h
@@ -2393,9 +2435,11 @@ GetName		PROC 	NEAR
 				MOV BL, 15 ;WHITE				
 				CALL PrintMessage
 
+
 				WAIT4Enter: CALL Wait4Key			
 							CMP AH,	EnterCode
-							JNE WAIT4Enter			
+							JNZ WAIT4Enter
+	
 			RET
 GetName		ENDP			
 ;---------------------------
@@ -2412,12 +2456,12 @@ DisplayMenu 	PROC     NEAR
 				MOV AL, 13H ; Mode 13h
 				INT 10H
 
-				MOV BP, OFFSET Player1 ; ES: BP POINTS TO THE TEXT
-				MOV CX, NameSz
-				MOV DH, 6 ;ROW TO PLACE STRING
-				MOV DL, 6 ; COLUMN TO PLACE STRING
-				MOV BL, 15 ;WHITE
-				CALL PrintMessage
+				; MOV BP, OFFSET Player1 ; ES: BP POINTS TO THE TEXT
+				; MOV CX, Ply1Sz
+				; MOV DH, 6 ;ROW TO PLACE STRING
+				; MOV DL, 6 ; COLUMN TO PLACE STRING
+				; MOV BL, 15 ;WHITE
+				; CALL PrintMessage
 					
 				MOV BP, OFFSET Menu21 ; ES: BP POINTS TO THE TEXT
 				MOV CX, M21sz ;SIZE OF STRING
@@ -2426,12 +2470,12 @@ DisplayMenu 	PROC     NEAR
 				MOV BL, 15 ;WHITE
 				CALL PrintMessage
 
-				MOV BP, OFFSET Player2 ; ES: BP POINTS TO THE TEXT
-				MOV CX, NameSz
-				MOV DH, 10 ;ROW TO PLACE STRING
-				MOV DL, 6 ; COLUMN TO PLACE STRING
-				MOV BL, 15 ;WHITE
-				CALL PrintMessage
+				; MOV BP, OFFSET Player2 ; ES: BP POINTS TO THE TEXT
+				; MOV CX, NameSz
+				; MOV DH, 10 ;ROW TO PLACE STRING
+				; MOV DL, 6 ; COLUMN TO PLACE STRING
+				; MOV BL, 15 ;WHITE
+				; CALL PrintMessage
 					
 				MOV BP, OFFSET Menu22 ; ES: BP POINTS TO THE TEXT
 				MOV CX, M22sz ;SIZE OF STRING
@@ -2481,9 +2525,9 @@ DisplayMenu      	ENDP
 ;@param			none
 ;@return		none
 GameEnded		PROC	NEAR
-				CALL Wait4Key
-				CMP AH, ESCcode
-				JE	ExitProg
+				;CALL Wait4Key
+				;CMP AH, ESCcode
+				;JE	ExitProg
 				MOV BP, OFFSET GameEnded1 ; ES: BP POINTS TO THE TEXT
 				MOV CX, GE1sz
 				MOV DH, GE1Y ; ROW TO PLACE STRING
@@ -2650,7 +2694,8 @@ DrawGUIText		PROC	NEAR
 				
 				;render the left screen score text
 				mov ah, 13h
-				mov cx, NameSz
+				mov cx, 0
+				mov cl, Ply1Sz
 				mov dh, LeftPlyLocY
 				mov dl, LeftPlyLocX
 				lea bp, Player1
@@ -2658,7 +2703,8 @@ DrawGUIText		PROC	NEAR
 				int 10h
 				
 				mov ah, 13h
-				mov cx, NameSz
+				mov cx, 0
+				mov cl, Ply2Sz
 				mov dh, RightPlyLocY
 				mov dl, RightPlyLocX
 				lea bp, Player2
@@ -2762,14 +2808,16 @@ DrawGUIText		PROC	NEAR
 				CALL UpdatePowerupsScore ;draw the powerups text
 
 				LEA BP, Player1
-				MOV CX, NameSz
+				mov cx, 0
+				MOV CL, Ply1Sz
 				MOV BL, 3
 				MOV DH, Player1ChatNameY
 				MOV DL, Player1ChatNameX
 				CALL PrintMessage
 
 				LEA BP, Player2
-				MOV CX, NameSz
+				mov cx, 0
+				MOV CL, Ply2Sz
 				MOV BL, 3
 				MOV DH, Player2ChatNameY
 				MOV DL, Player2ChatNameX
@@ -3681,9 +3729,10 @@ SendValueThroughSerial	ENDP
 ;@param		none
 ;@return	none
 SendNameThroughSerial	PROC	NEAR
-		MOV CX, NameSz
-		LEA DI, Player1
-
+		MOV CX, 0
+		MOV CL, Ply1Sz
+		LEA DI, Ply1Sz
+		INC CX
 loopthruName:
 		mov dx , 3FDH ; Line Status Register
 		AGAIN: In al , dx ;Read Line Status
@@ -3703,7 +3752,20 @@ SendNameThroughSerial	ENDP
 ;@param		none
 ;@return	none
 ReceiveNameFromSerial	PROC	NEAR
-		MOV CX, NameSz
+
+		LEA DI, Ply2Sz
+
+		mov dx , 3FDH ; Line Status Register
+		CHK1: in al , dx
+		test al , 1
+		JZ CHK1 ;Not Ready
+		;If Ready read the VALUE in Receive data register
+		mov dx , 03F8H
+		in al , dx
+		mov [DI] , al
+
+		MOV CX, 0
+		MOV CL, Ply2Sz
 		LEA DI, Player2
 
 loopthruName2:
@@ -3764,14 +3826,16 @@ DRAWHORLINE:
 		JNZ DRAWHORLINE
 
 		MOV BP, OFFSET Player1 	;Player1 name
-		MOV CX, NameSz			;Size of string
+		Mov cx, 0
+		MOV CL, Ply1Sz			;Size of string
 		MOV DH, 0
 		MOV DL, 1
 		MOV BL, 3				;color
 		CALL PrintMessage
 
 		MOV BP, OFFSET Player2 	;Player2 name
-		MOV CX, NameSz			;Size of string
+		Mov CX, 0
+		MOV CL, Ply2Sz			;Size of string
 		MOV DH, 12
 		MOV DL, 1
 		MOV BL, 3				;color
