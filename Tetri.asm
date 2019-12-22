@@ -89,7 +89,7 @@ LogoData			DB  0
 
 ;--------Powerups-------
 
-PowerupEveryPoint				EQU 4
+PowerupEveryPoint				EQU 2
 
 Player1Score					DB 0			;score of first player
 leftPowerupFreezeCount			DB 0
@@ -135,6 +135,11 @@ RightPlyLocX		EQU RightScoreLocX-10
 RightPlyLocY		EQU RightScoreLocY
 LeftPlyLocX			EQU LeftScoreLocX-10
 LeftPlyLocY			EQU LeftScoreLocY
+
+RightPlyLocXX		DB RightPlyLocX
+RightPlyLocYY		DB RightPlyLocY
+LeftPlyLocXX		DB LeftPlyLocX
+LeftPlyLocYY		DB LeftPlyLocY
 
 ;------Pieces Data------
 
@@ -1324,10 +1329,19 @@ ParseInput	ENDP
 ;@param			AH: key to parse, SI: playerID
 ;@return		none
 ParseLocalInput	PROC	NEAR
-SyncKey:
-		CMP AH, SyncCode
-		JNZ ExitGame
-		JMP BreakParseInput
+		PUSH DI
+; SyncKey:
+; 		CMP AH, SyncCode
+; 		JNZ ExitGame
+; 		JMP BreakParseInput
+
+		CMP SI, 0
+		JNZ SIis4
+		LEA DI, Player1Score
+		JMP ExitGame
+SIis4:
+		LEA DI, Player2Score
+
 ExitGame:
 		CMP AH, ESCASCII
 		JNZ LeftRotKey
@@ -1335,13 +1349,15 @@ ExitGame:
 		;------ this should be changed to return to menu instead
 		;CALL EndGame
 		MOV EscPressed, 1
+		POP DI
 		RET
 		JMP BreakParseInput
 LeftRotKey:
 		CMP AH, UpArrowASCII
 		JNZ LeftLeftKey
 
-		CMP leftPieceRotationLock,1 ;check if the rotation is locked
+		MOV AH,[DI]+6
+		CMP AH,1 ;check if the rotation is locked
 		JZ LeftRotKeyParsed
 
 		MOV SI, PlayerId
@@ -1389,13 +1405,14 @@ LeftPowerup1:
 		CMP AH, F1ASCII
 		JNZ LeftPowerup2
 
-		MOV AH, leftPowerupFreezeCount
+		MOV AH, [DI]+1
 		CMP AH, 0
 		JZ	BreakPowerup1
 
 		MOV SI, PlayerId
 		CALL FreezeRotation
-		SUB leftPowerupFreezeCount, 1
+		MOV AH, 1
+		SUB [DI+1], AH
 		CALL UpdatePowerupsScore
 
 BreakPowerup1:
@@ -1405,13 +1422,14 @@ LeftPowerup2:
 		CMP AH, F2ASCII
 		JNZ LeftPowerup3
 
-		MOV AH, leftPowerupSpeedUpCount
+		MOV AH, [DI]+2
 		CMP AH, 0
 		JZ	BreakPowerup2
 
 		MOV SI, PlayerId
 		CALL SpeedUpOpponentPiece
-		SUB leftPowerupSpeedUpCount, 1
+		MOV AH, 1
+		SUB [DI+2], AH
 		CALL UpdatePowerupsScore
 
 BreakPowerup2:
@@ -1420,13 +1438,14 @@ LeftPowerup3:
 		CMP AH, F3ASCII
 		JNZ LeftPowerup4
 		
-		MOV AH, leftPowerupRemoveLinesCount
+		MOV AH, [DI]+3
 		CMP AH, 0
 		JZ	BreakPowerup3
 
 		MOV SI, PlayerId
 		CALL RemoveFourLines
-		SUB leftPowerupRemoveLinesCount, 1
+		MOV AH, 1
+		SUB [DI+3], AH
 		CALL UpdatePowerupsScore
 BreakPowerup3:
 		JMP BreakParseInput
@@ -1434,13 +1453,14 @@ LeftPowerup4:
 		CMP AH, F4ASCII
 		JNZ LeftPowerup5
 
-		MOV AH, leftPowerupChangePieceCount
+		MOV AH, [DI]+4
 		CMP AH, 0
 		JZ	BreakPowerup4
 
 		MOV SI, PlayerId
 		CALL ChangePiece
-		SUB leftPowerupChangePieceCount,1
+		MOV AH, 1
+		SUB [DI+4], AH
 		CALL UpdatePowerupsScore
 BreakPowerup4:
 		JMP BreakParseInput
@@ -1449,14 +1469,15 @@ LeftPowerup5:
 		CMP AH, F5ASCII
 		JNZ WriteCharToChat
 
-		MOV AH, leftPowerupInsertTwoLinesCount
+		MOV AH, [DI]+5
 		CMP AH, 0
 		JZ	BreakPowerup5
 
 
 		MOV SI, PlayerId
 		CALL InsertTwoLines
-		SUB leftPowerupInsertTwoLinesCount,1
+		MOV AH, 1
+		SUB [DI+5], AH
 		CALL UpdatePowerupsScore
 
 BreakPowerup5:
@@ -1469,6 +1490,7 @@ WriteCharToChat:
 		JMP BreakParseInput
 
 BreakParseInput:
+		POP DI
 		RET
 ParseLocalInput	ENDP
 ;---------------------------
@@ -1481,7 +1503,7 @@ PieceGravity	PROC	NEAR
 				; INT  21H 			;RETURN SECONDS IN DH.
 				MOV AX,0
 				MOV AL,SeedNumber
-				MOV CX,25
+				MOV CX,23
 				DIV CL
 				MOV BX,0
 				MOV BL,AH
@@ -2629,7 +2651,7 @@ ChangeScoreToText	ENDP
 ;@return			none
 DrawGUIText		PROC	NEAR
 				PUSHA
-
+				CALL AdjustNamePositions
 				;score bars
 				;top
 				mov ah, 13h
@@ -2699,8 +2721,8 @@ DrawGUIText		PROC	NEAR
 				mov ah, 13h
 				mov cx, 0
 				mov cl, Ply1Sz
-				mov dh, LeftPlyLocY
-				mov dl, LeftPlyLocX
+				mov dh, LeftPlyLocYY
+				mov dl, LeftPlyLocXX
 				lea bp, Player1
 				mov bx, 4d
 				int 10h
@@ -2708,8 +2730,8 @@ DrawGUIText		PROC	NEAR
 				mov ah, 13h
 				mov cx, 0
 				mov cl, Ply2Sz
-				mov dh, RightPlyLocY
-				mov dl, RightPlyLocX
+				mov dh, RightPlyLocYY
+				mov dl, RightPlyLocXX
 				lea bp, Player2
 				mov bx, 4d
 				int 10h
@@ -2814,6 +2836,7 @@ DrawGUIText		PROC	NEAR
 				mov cx, 0
 				MOV CL, Ply1Sz
 				MOV BL, 3
+				CMP PlayerId, 0
 				MOV DH, Player1ChatNameY
 				MOV DL, Player1ChatNameX
 				CALL PrintMessage
@@ -3165,10 +3188,6 @@ PowerupBreak:
 					MOV BL, 1
 					ADD [DI], BL			;increases the number of that powerup
 					CALL UpdatePowerupsScore
-
-					MOV AH, 2				;create beep sound
-					MOV DL, 7
-					INT 21H
 
 NoPowerUp:
 					POPA
@@ -4252,5 +4271,33 @@ clearkeyboardbuffer		proc	near
 	pop		ax
 	ret
 clearkeyboardbuffer		endp
+;--------------------------
+;this procedure adjusts the positions of chat names according to PlayerId
+;@param	none
+;@return none
+AdjustNamePositions	PROC	NEAR
+	PUSHA
+	MOV AX, Player1Id
+	CMP AX, 0
+	JZ PlayerIdIsZero
+PlayerIdIsFour:
+	mov leftPlyLocXX, RightPlyLocX
+	mov leftplylocYY, RightPlyLocY
+	mov rightPlyLocXX, leftPlyLocX
+	mov rightPlyLocYY, leftPlyLocY
+	MOV Player1ChatCursorY, Player2ChatNameY+1
+	Mov Player2ChatCursorY, Player1ChatNameY+1
+	JMP EXITNAMEPOS
+PlayerIdIsZero:
+	mov leftPlyLocXX, leftPlyLocX
+	mov leftplylocYY, leftPlyLocY
+	mov rightPlyLocXX, RightPlyLocX
+	mov rightPlyLocYY, RightPlyLocY
+	MOV Player1ChatCursorY, Player1ChatNameY+1
+	Mov Player2ChatCursorY, Player2ChatNameY+1
+EXITNAMEPOS:
+	POPA
+	RET
+AdjustNamePositions	ENDP
 ;--------------------------
 END     MAIN
