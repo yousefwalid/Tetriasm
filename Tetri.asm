@@ -10,56 +10,56 @@ INCLUDE macros.inc
 ;--------External-------
 LeftFrameTopWidth EQU  219
 LeftFrameTopHeight EQU 54
-LeftFrameTopFilename DB 'icetop.bin', 0
+LeftFrameTopFilename DB 'assets/icetop.bin', 0
 LeftFrameTopX		 EQU 90
 LeftFrameTopY		 EQU 0
 LeftFrameTopFilehandle DW ?
 
 LeftFrameLeftWidth EQU  51
 LeftFrameLeftHeight EQU 426
-LeftFrameLeftFilename DB 'iceleft.bin', 0
+LeftFrameLeftFilename DB 'assets/iceleft.bin', 0
 LeftFrameLeftX		 EQU 51
 LeftFrameLeftY		 EQU 54
 LeftFrameLeftFilehandle DW ?
 
 LeftFrameRightWidth EQU  43
 LeftFrameRightHeight EQU 426
-LeftFrameRightFilename DB 'iceright.bin', 0
+LeftFrameRightFilename DB 'assets/iceright.bin', 0
 LeftFrameRightX		 EQU 297
 LeftFrameRightY		 EQU 54
 LeftFrameRightFilehandle DW ?
 
 LeftFrameBottomWidth EQU  197
 LeftFrameBottomHeight EQU 54
-LeftFrameBottomFilename DB 'icebot.bin', 0
+LeftFrameBottomFilename DB 'assets/icebot.bin', 0
 LeftFrameBottomX		 EQU 101
 LeftFrameBottomY		 EQU 451
 LeftFrameBottomFilehandle DW ?
 
 RightFrameTopWidth EQU  248
 RightFrameTopHeight EQU 53
-RightFrameTopFilename DB 'firetop.bin', 0
+RightFrameTopFilename DB 'assets/firetop.bin', 0
 RightFrameTopX		 EQU 576
 RightFrameTopY		 EQU 1
 RightFrameTopFilehandle DW ?
 
 RightFrameLeftWidth EQU  41
 RightFrameLeftHeight EQU 458
-RightFrameLeftFilename DB 'fireleft.bin', 0
+RightFrameLeftFilename DB 'assets/fireleft.bin', 0
 RightFrameLeftX		 EQU 561
 RightFrameLeftY		 EQU 54
 RightFrameLeftFilehandle DW ?
 
 RightFrameRightWidth EQU  49
 RightFrameRightHeight EQU 461
-RightFrameRightFilename DB 'firer.bin', 0
+RightFrameRightFilename DB 'assets/firer.bin', 0
 RightFrameRightX		 EQU 797
 RightFrameRightY		 EQU 54
 RightFrameRightFilehandle DW ?
 
 RightFrameBottomWidth EQU  199
 RightFrameBottomHeight EQU 63
-RightFrameBottomFilename DB 'firebot.bin', 0
+RightFrameBottomFilename DB 'assets/firebot.bin', 0
 RightFrameBottomX		 EQU 598
 RightFrameBottomY		 EQU 452
 RightFrameBottomFilehandle DW ?
@@ -82,7 +82,7 @@ LogostY				EQU 30D
 LogofnX				EQU LogostX + LogoWidth
 LogofnY				EQU LogostY + LogoHeight	
 
-Logofilename 		DB 'Logo.bin', 0
+Logofilename 		DB 'assets/Logo.bin', 0
 LogoFilehandle 		DW ?
 positionInLogoFile 	DW 0
 LogoData			DB  0
